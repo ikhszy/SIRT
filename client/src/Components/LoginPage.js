@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../api';
 
 export default function LoginPage() {
@@ -7,6 +7,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('expired') === 'true') {
+      setError('Sesi Anda telah berakhir. Silakan login kembali.');
+    }
+  }, [location.search]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,23 +28,26 @@ export default function LoginPage() {
       navigate('/');
     } catch (err) {
       console.error('Login error:', err);
-      setError('Invalid username or password');
+      setError('Username atau password salah');
     }
   };
 
   return (
     <div className="container">
-      {/* Outer Row */}
       <div className="row justify-content-center" style={{ marginTop: '10%' }}>
         <div className="col-xl-6 col-lg-8 col-md-9">
           <div className="card o-hidden border-0 shadow-lg">
             <div className="card-body p-5">
-              {/* Form Heading */}
               <div className="text-center">
                 <h1 className="h4 text-gray-900 mb-4">Welcome Back!</h1>
               </div>
 
-              {/* Login Form */}
+              {error && (
+                <div className="alert alert-danger text-center py-2">
+                  {error}
+                </div>
+              )}
+
               <form onSubmit={handleSubmit}>
                 <div className="form-group mb-3">
                   <input
@@ -58,7 +69,7 @@ export default function LoginPage() {
                     required
                   />
                 </div>
-                {error && <div className="text-danger text-center mb-3">{error}</div>}
+
                 <button type="submit" className="btn btn-primary btn-user btn-block w-100">
                   Login
                 </button>
