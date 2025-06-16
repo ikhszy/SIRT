@@ -5,13 +5,7 @@ import api from '../api';
 
 export default function AddAddress() {
   const [form, setForm] = useState({
-    full_address: '',
-    rt: '',
-    rw: '',
-    village: '',
-    district: '',
-    city: '',
-    postal_code: ''
+    full_address: ''
   });
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -42,38 +36,8 @@ export default function AddAddress() {
           <div className="card-body">
             <form onSubmit={handleSubmit}>
               <div className="mb-3">
-                <label className="form-label">Alamat Lengkap</label>
-                <input className="form-control" name="full_address" value={form.full_address} onChange={handleChange} required />
-              </div>
-
-              <div className="row mb-3">
-                <div className="col-md-2">
-                  <label>RT</label>
-                  <input className="form-control" name="rt" value={form.rt} onChange={handleChange} />
-                </div>
-                <div className="col-md-2">
-                  <label>RW</label>
-                  <input className="form-control" name="rw" value={form.rw} onChange={handleChange} />
-                </div>
-                <div className="col-md-4">
-                  <label>Kelurahan</label>
-                  <input className="form-control" name="village" value={form.village} onChange={handleChange} />
-                </div>
-                <div className="col-md-4">
-                  <label>Kecamatan</label>
-                  <input className="form-control" name="district" value={form.district} onChange={handleChange} />
-                </div>
-              </div>
-
-              <div className="row mb-3">
-                <div className="col-md-6">
-                  <label>Kota</label>
-                  <input className="form-control" name="city" value={form.city} onChange={handleChange} />
-                </div>
-                <div className="col-md-6">
-                  <label>Kode Pos</label>
-                  <input className="form-control" name="postal_code" value={form.postal_code} onChange={handleChange} />
-                </div>
+                <label className="form-label">Alamat</label>
+                <input className="form-control" name="full_address" value={form.full_address} onChange={handleChange} placeholder='isikan nama jalan saja...' required />
               </div>
 
               {error && <div className="text-danger mb-3">{error}</div>}

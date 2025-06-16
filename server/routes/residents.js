@@ -6,6 +6,12 @@ const authMiddleware = require('../middleware/authMiddleware');
 // GET all residents
 router.get("/", authMiddleware, async (req, res) => {
   try {
+    if (req.query.lookup === 'true') {
+      const sql = `SELECT nik, full_name FROM residents ORDER BY full_name ASC`;
+      const rows = await db.all(sql);
+      return res.json(rows);
+    }
+
     const sql = `
       SELECT r.*, a.full_address
       FROM residents r
@@ -16,6 +22,25 @@ router.get("/", authMiddleware, async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('GET residents failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET resident by NIK
+router.get("/nik/:nik", authMiddleware, async (req, res) => {
+  try {
+    const sql = `
+      SELECT r.*, a.full_address, h.kk_number
+      FROM residents r
+      LEFT JOIN address a ON r.address_id = a.id
+      LEFT JOIN households h ON r.kk_number = h.kk_number
+      WHERE r.nik = ?
+    `;
+    const row = await db.get(sql, [req.params.nik]);
+    if (!row) return res.status(404).json({ error: 'Resident not found' });
+    res.json(row);
+  } catch (err) {
+    console.error('GET resident by NIK failed:', err);
     res.status(500).json({ error: err.message });
   }
 });

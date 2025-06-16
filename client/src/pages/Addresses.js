@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Addresses() {
   const [addresses, setAddresses] = useState([]);
+  const [settings, setSettings] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 
@@ -12,16 +13,24 @@ export default function Addresses() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
-    api.get('/address').then((res) => setAddresses(res.data));
+    const fetchData = async () => {
+      const [addrRes, settingsRes] = await Promise.all([
+        api.get('/address'),
+        api.get('/settings')
+      ]);
+      setAddresses(addrRes.data);
+      setSettings(settingsRes.data);
+    };
+
+    fetchData();
   }, []);
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this address?')) return;
     await api.delete(`/address/${id}`);
-    setAddresses(addresses.filter(a => a.id !== id));
+    setAddresses(addresses.filter((a) => a.id !== id));
   };
 
-  // Filtered + paginated addresses
   const filtered = addresses.filter((a) =>
     a.full_address.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -68,27 +77,17 @@ export default function Addresses() {
             <table className="table table-bordered">
               <thead className="table-primary">
                 <tr>
-                  <th>Address</th>
-                  <th>RT</th>
-                  <th>RW</th>
-                  <th>Kelurahan</th>
-                  <th>Kecamatan</th>
-                  <th>Kota</th>
-                  <th>Kode Pos</th>
-                  <th>Actions</th>
+                  <th>Alamat Lengkap</th>
+                  <th>Aksi</th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedAddresses.length > 0 ? (
+                {paginatedAddresses.length > 0 && settings ? (
                   paginatedAddresses.map((a) => (
                     <tr key={a.id}>
-                      <td>{a.full_address}</td>
-                      <td>{a.rt}</td>
-                      <td>{a.rw}</td>
-                      <td>{a.village}</td>
-                      <td>{a.district}</td>
-                      <td>{a.city}</td>
-                      <td>{a.postal_code}</td>
+                      <td>
+                        {a.full_address}, RT {settings.rt}, RW {settings.rw}, Kelurahan {settings.kelurahan}, Kecamatan {settings.kecamatan}, Kota {settings.kota} {settings.kode_pos}
+                      </td>
                       <td>
                         <button
                           className="btn btn-warning btn-sm me-2"
@@ -107,7 +106,7 @@ export default function Addresses() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8" className="text-center">
+                    <td colSpan="2" className="text-center">
                       Tidak ada data alamat.
                     </td>
                   </tr>

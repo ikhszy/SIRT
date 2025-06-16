@@ -1,0 +1,52 @@
+/* client/src/pages/SuratPengantar/IntroLetterPreview.css */
+.letter-container {
+  width: 21cm;
+  min-height: 33cm;
+  padding: 2cm;
+  background: white;
+  color: black;
+  font-size: 14px;
+  margin: auto;
+  font-family: 'Times New Roman', serif;
+}
+
+.table-no-border td {
+  padding: 3px;
+  vertical-align: top;
+}
+
+@media print {
+  body {
+    background: none;
+  }
+
+  .letter-container {
+    margin: 0;
+    box-shadow: none;
+    page-break-after: always;
+  }
+
+  @page {
+    size: 21cm 33cm;
+    margin: 0;
+  }
+}
+
+.letter-header {
+  display: flex;
+  align-items: center;
+}
+
+.letter-logo {
+  width: 50px;
+  height: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.letter-heading-text {
+  width: calc(100% - 100px);  /* logo width is 100px */
+  text-align: center;
+
+}
+

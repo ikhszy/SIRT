@@ -3,6 +3,7 @@ import { Table, Form, Row, Col, Card, Button } from 'react-bootstrap';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import AdminLayout from '../layouts/AdminLayout';
+import api from '../api';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -24,28 +25,29 @@ const FinanceReport = () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
-      if (filters.min_transactionDate) params.append('minDate', filters.min_transactionDate);
-      if (filters.max_transactionDate) params.append('maxDate', filters.max_transactionDate);
+      if (filters.min_transactionDate) params.append('startDate', filters.min_transactionDate);
+      if (filters.max_transactionDate) params.append('endDate', filters.max_transactionDate);
       if (filters.status) params.append('status', filters.status);
       if (filters.remarks) params.append('remarks', filters.remarks);
 
-      const response = await fetch(`/api/finance/report?${params.toString()}`);
-      const json = await response.json();
+      const response = await api.get(`/finance/report?${params.toString()}`);
+      const json = response.data;
 
       const sorted = json.sort(
         (a, b) => new Date(b.transactionDate) - new Date(a.transactionDate)
       );
       setData(sorted);
-      setCurrentPage(1); // Reset to first page
+      setCurrentPage(1);
     } catch (err) {
       console.error('Failed to fetch finance data:', err);
+      alert('Gagal memuat data keuangan. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData(); // Fetch once on first mount
+    fetchData();
   }, []);
 
   const filteredData = data;
@@ -106,7 +108,6 @@ const FinanceReport = () => {
           </Button>
         </Card.Header>
         <Card.Body>
-          {/* Filters */}
           <Form className="mb-4 p-3 border rounded bg-light">
             <Row className="gy-3">
               <Col md={4}>
@@ -182,7 +183,6 @@ const FinanceReport = () => {
             </Row>
           </Form>
 
-          {/* Table */}
           <Table striped bordered hover responsive className="align-middle">
             <thead className="table-primary">
               <tr>
@@ -214,7 +214,6 @@ const FinanceReport = () => {
             </tbody>
           </Table>
 
-          {/* Pagination */}
           <div className="d-flex justify-content-between align-items-center mt-3">
             <div>
               Menampilkan {paginatedData.length} dari {filteredData.length} data
@@ -242,11 +241,7 @@ const FinanceReport = () => {
             </div>
           </div>
 
-          {/* Summary */}
-          <div
-            className="mt-4 p-3 rounded shadow-sm"
-            style={{ backgroundColor: '#f8f9fa' }}
-          >
+          <div className="mt-4 p-3 rounded shadow-sm" style={{ backgroundColor: '#f8f9fa' }}>
             <h6 className="mb-3 fw-semibold border-bottom pb-2">Ringkasan</h6>
             <p className="mb-1">
               <span className="fw-semibold text-success">Total Pemasukan:</span>{' '}

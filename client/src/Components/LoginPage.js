@@ -10,18 +10,22 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+
     try {
       const res = await api.post('/login', { username, password });
-      localStorage.setItem('token', res.data.token);
+
+      // Save token with 'Bearer' prefix for consistency
+      localStorage.setItem('token', `Bearer ${res.data.token}`);
       navigate('/');
-    } catch {
+    } catch (err) {
+      console.error('Login error:', err);
       setError('Invalid username or password');
     }
   };
 
   return (
     <div className="container">
-
       {/* Outer Row */}
       <div className="row justify-content-center" style={{ marginTop: '10%' }}>
         <div className="col-xl-6 col-lg-8 col-md-9">
@@ -61,7 +65,7 @@ export default function LoginPage() {
               </form>
 
               <hr />
-              <div className="text-center text-muted small">RT Admin Panel Login</div>
+              <div className="text-center text-muted small">RT DIGITAL LOGIN</div>
             </div>
           </div>
         </div>

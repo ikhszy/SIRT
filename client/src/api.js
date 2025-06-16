@@ -6,10 +6,14 @@ const api = axios.create({
 
 // Automatically attach token to every request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const rawToken = localStorage.getItem("token");
+
+  if (rawToken) {
+    // Make sure we don't accidentally double-prefix
+    const token = rawToken.startsWith('Bearer ') ? rawToken : `Bearer ${rawToken}`;
+    config.headers.Authorization = token;
   }
+
   return config;
 });
 

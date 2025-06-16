@@ -189,7 +189,7 @@ export default function ResidentReport() {
     <AdminLayout>
       <div className="container-fluid px-4">
         <div className="d-flex justify-content-between align-items-center mb-4 no-print">
-          <h1 className="h3 text-gray-800"><i className="fas fa-file-alt me-2"></i>Resident Report</h1>
+          <h1 className="h3 text-gray-800"><i className="fas fa-file-alt me-2"></i>Laporan Data Warga</h1>
           <div>
             <Button variant="outline-danger" className="me-2" onClick={handleExportPDF}>
               <i className="fas fa-file-pdf me-1" /> Export to PDF

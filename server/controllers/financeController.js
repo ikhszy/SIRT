@@ -3,12 +3,19 @@ const path = require("path");
 const dbPath = path.resolve(__dirname, "../db/community.sqlite");
 const db = new sqlite3.Database(dbPath);
 const multer = require("multer");
-const upload = multer({ dest: "uploads/" }); // or use memoryStorage() if you prefer
-const fs = require("fs");
+const upload = multer({ storage: multer.memoryStorage() }); // switched to in-memory
 const xlsx = require("xlsx");
 
 // Helper to get current datetime
 const getNow = () => new Date().toISOString();
+
+// format date filter
+const formatDateForFilter = (dateStr) => {
+  const d = new Date(dateStr);
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`; // YYYY-MM-DD
+};
 
 // --- INCOME ---
 
@@ -26,7 +33,6 @@ exports.getAllIncome = (req, res) => {
   });
 };
 
-// Get one income by ID
 exports.getIncomeById = (req, res) => {
   const { id } = req.params;
   const sql = `
@@ -63,7 +69,7 @@ exports.addIncome = (req, res) => {
       INSERT INTO income (residentId, remarks, transactionAmount, transactionDate, date_created, date_modified, status)
       VALUES (?, ?, ?, ?, ?, ?, 'A')
     `;
-    db.run(insertSql, [residentId || null, remarks, transactionAmount, transactionDate, now, now], function(err) {
+    db.run(insertSql, [residentId || null, remarks, transactionAmount, transactionDate, now, now], function (err) {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ id: this.lastID });
     });
@@ -80,7 +86,7 @@ exports.updateIncome = (req, res) => {
     SET residentId = ?, remarks = ?, transactionAmount = ?, transactionDate = ?, date_modified = ?
     WHERE id = ? AND status = 'A'
   `;
-  db.run(sql, [residentId || null, remarks, transactionAmount, transactionDate, now, id], function(err) {
+  db.run(sql, [residentId || null, remarks, transactionAmount, transactionDate, now, id], function (err) {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ updated: this.changes });
   });
@@ -92,13 +98,13 @@ exports.deleteIncome = (req, res) => {
   const sql = `
     UPDATE income SET status = 'D', date_modified = ? WHERE id = ?
   `;
-  db.run(sql, [now, id], function(err) {
+  db.run(sql, [now, id], function (err) {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ deleted: this.changes });
   });
 };
 
-// --- EXPENSE (simpler since no resident link) ---
+// --- EXPENSE ---
 
 exports.getAllExpense = (req, res) => {
   const sql = `SELECT * FROM expense WHERE status = 'A' ORDER BY transactionDate DESC`;
@@ -108,17 +114,12 @@ exports.getAllExpense = (req, res) => {
   });
 };
 
-// Get one expense by ID
-exports.getExpenseById = async (req, res) => {
+exports.getExpenseById = (req, res) => {
   const { id } = req.params;
-  const sql = `
-    SELECT i.*, r.full_name FROM income i
-    LEFT JOIN residents r ON i.residentId = r.id
-    WHERE i.id = ? AND i.status = 'A'
-  `;
+  const sql = `SELECT * FROM expense WHERE id = ? AND status = 'A'`;
   db.get(sql, [id], (err, row) => {
     if (err) return res.status(500).json({ error: err.message });
-    if (!row) return res.status(404).json({ error: 'Income not found' });
+    if (!row) return res.status(404).json({ error: 'Expense not found' });
     res.json(row);
   });
 };
@@ -131,7 +132,7 @@ exports.addExpense = (req, res) => {
     INSERT INTO expense (remarks, transactionAmount, transactionDate, date_created, date_modified, status)
     VALUES (?, ?, ?, ?, ?, 'A')
   `;
-  db.run(sql, [remarks, transactionAmount, transactionDate, now, now], function(err) {
+  db.run(sql, [remarks, transactionAmount, transactionDate, now, now], function (err) {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ id: this.lastID });
   });
@@ -147,7 +148,7 @@ exports.updateExpense = (req, res) => {
     SET remarks = ?, transactionAmount = ?, transactionDate = ?, date_modified = ?
     WHERE id = ? AND status = 'A'
   `;
-  db.run(sql, [remarks, transactionAmount, transactionDate, now, id], function(err) {
+  db.run(sql, [remarks, transactionAmount, transactionDate, now, id], function (err) {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ updated: this.changes });
   });
@@ -159,13 +160,14 @@ exports.deleteExpense = (req, res) => {
   const sql = `
     UPDATE expense SET status = 'D', date_modified = ? WHERE id = ?
   `;
-  db.run(sql, [now, id], function(err) {
+  db.run(sql, [now, id], function (err) {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ deleted: this.changes });
   });
 };
 
-// -- REPORT with params --
+// --- FINANCE REPORT ---
+
 exports.financeReport = (req, res) => {
   const { startDate, endDate, remarks = '', status = '' } = req.query;
 
@@ -189,117 +191,103 @@ exports.financeReport = (req, res) => {
 
   let results = [];
 
-  // Helper to run income query
   function getIncome(cb) {
-    if (status && status !== 'income') return cb(null, []); // skip income if status is not income or empty
-
+    if (status && status !== 'income') return cb(null, []);
     const sql = `
       SELECT id, transactionDate, remarks, transactionAmount, 'income' AS status
       FROM income
       ${whereClause ? whereClause + ' AND' : 'WHERE'} status = 'A'
     `;
-    db.all(sql, params, (err, rows) => {
+    db.all(sql, [...params], (err, rows) => {
       if (err) return cb(err);
       cb(null, rows);
     });
   }
 
-  // Helper to run expense query
   function getExpense(cb) {
-    if (status && status !== 'expense') return cb(null, []); // skip expense if status is not expense or empty
-
+    if (status && status !== 'expense') return cb(null, []);
     const sql = `
       SELECT id, transactionDate, remarks, transactionAmount, 'expense' AS status
       FROM expense
       ${whereClause ? whereClause + ' AND' : 'WHERE'} status = 'A'
     `;
-    db.all(sql, params, (err, rows) => {
+    db.all(sql, [...params], (err, rows) => {
       if (err) return cb(err);
       cb(null, rows);
     });
   }
 
-  // Run both queries in parallel and combine results
   getIncome((err, incomeRows) => {
-    if (err) {
-      console.error('Income query error:', err);
-      return res.status(500).json({ error: 'Failed to fetch income data' });
-    }
+    if (err) return res.status(500).json({ error: 'Failed to fetch income data' });
     getExpense((err, expenseRows) => {
-      if (err) {
-        console.error('Expense query error:', err);
-        return res.status(500).json({ error: 'Failed to fetch expense data' });
-      }
-
+      if (err) return res.status(500).json({ error: 'Failed to fetch expense data' });
       results = incomeRows.concat(expenseRows);
-
-      // Sort combined results by transactionDate ascending
       results.sort((a, b) => new Date(a.transactionDate) - new Date(b.transactionDate));
-
       res.json(results);
     });
   });
 };
 
-// Preview uploaded Excel
+// --- PREVIEW UPLOAD ---
+
 exports.previewFinanceImport = [
   upload.single("file"),
   (req, res) => {
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
 
-    const workbook = xlsx.readFile(req.file.path);
+    const workbook = xlsx.read(req.file.buffer);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const data = xlsx.utils.sheet_to_json(sheet);
-
-    fs.unlinkSync(req.file.path); // clean up uploaded file
-
-    if (!Array.isArray(data) || data.length === 0) {
-      return res.json({ success: false, message: "Empty or invalid sheet" });
-    }
 
     const errors = [];
     const preview = [];
 
     data.forEach((row, index) => {
-      const type = (row["Type"] || "").toLowerCase(); // income or expense
-      const transactionAmount = parseFloat(row["Amount"]);
-      const transactionDate = row["Date"];
+      const type = (row["Type"] || "").toLowerCase();
+      const amount = parseFloat(row["Amount"]);
+      const dateRaw = row["Date"];
+      const date = new Date(dateRaw);
       const remarks = row["Remarks"] || "";
       const residentId = row["Resident ID"] || null;
 
       if (!type || !["income", "expense"].includes(type)) {
-        errors.push({ row: index + 2, message: "Invalid Type (must be income or expense)" });
+        errors.push({ row: index + 2, message: "Invalid Type", data: row });
         return;
       }
 
-      if (!transactionAmount || isNaN(transactionAmount)) {
-        errors.push({ row: index + 2, message: "Invalid Amount" });
+      if (!amount || isNaN(amount)) {
+        errors.push({ row: index + 2, message: "Invalid Amount", data: row });
         return;
       }
 
-      if (!transactionDate) {
-        errors.push({ row: index + 2, message: "Missing Date" });
+      if (!dateRaw || isNaN(date)) {
+        errors.push({ row: index + 2, message: "Invalid Date", data: row });
         return;
       }
 
-      preview.push({ type, transactionAmount, transactionDate, remarks, residentId });
+      preview.push({
+        type,
+        transactionAmount: amount,
+        transactionDate: date.toISOString().split('T')[0],
+        remarks,
+        residentId
+      });
     });
 
     return res.json({ success: true, data: preview, errors });
   }
 ];
 
-// Import into DB
+// --- IMPORT TO DB ---
+
 exports.bulkFinanceImport = [
   upload.single("file"),
   (req, res) => {
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
 
-    const workbook = xlsx.readFile(req.file.path);
+    const workbook = xlsx.read(req.file.buffer);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const data = xlsx.utils.sheet_to_json(sheet);
-
-    fs.unlinkSync(req.file.path);
 
     const now = getNow();
     const inserted = [];
@@ -313,46 +301,53 @@ exports.bulkFinanceImport = [
       const row = data[index];
       const type = (row["Type"] || "").toLowerCase();
       const amount = parseFloat(row["Amount"]);
-      const date = row["Date"];
+      const dateRaw = row["Date"];
+      const date = new Date(dateRaw);
       const remarks = row["Remarks"] || "";
       const residentId = row["Resident ID"] || null;
 
-      if (!type || !["income", "expense"].includes(type)) {
-        errors.push({ row: index + 2, message: "Invalid Type" });
-        return insertNext(index + 1);
-      }
-      if (!amount || isNaN(amount) || !date) {
-        errors.push({ row: index + 2, message: "Missing required fields" });
+      if (!type || !["income", "expense"].includes(type) || isNaN(amount) || isNaN(date)) {
+        errors.push({ row: index + 2, message: "Invalid fields", data: row });
         return insertNext(index + 1);
       }
 
-      if (type === "income") {
-        const sql = `
-          INSERT INTO income (residentId, remarks, transactionAmount, transactionDate, date_created, date_modified, status)
-          VALUES (?, ?, ?, ?, ?, ?, 'A')
-        `;
-        db.run(sql, [residentId || null, remarks, amount, date, now, now], function (err) {
+      const formattedDate = date.toISOString().split('T')[0];
+
+      // Basic duplication check
+      const dupCheckSql = type === 'income'
+        ? `SELECT id FROM income WHERE transactionDate = ? AND transactionAmount = ? AND remarks = ? AND status = 'A'`
+        : `SELECT id FROM expense WHERE transactionDate = ? AND transactionAmount = ? AND remarks = ? AND status = 'A'`;
+
+      db.get(dupCheckSql, [formattedDate, amount, remarks], (err, existing) => {
+        if (err) {
+          errors.push({ row: index + 2, message: err.message, data: row });
+          return insertNext(index + 1);
+        }
+
+        if (existing) {
+          errors.push({ row: index + 2, message: "Duplicate record", data: row });
+          return insertNext(index + 1);
+        }
+
+        const insertSql = type === 'income'
+          ? `INSERT INTO income (residentId, remarks, transactionAmount, transactionDate, date_created, date_modified, status)
+             VALUES (?, ?, ?, ?, ?, ?, 'A')`
+          : `INSERT INTO expense (remarks, transactionAmount, transactionDate, date_created, date_modified, status)
+             VALUES (?, ?, ?, ?, ?, 'A')`;
+
+        const insertParams = type === 'income'
+          ? [residentId || null, remarks, amount, formattedDate, now, now]
+          : [remarks, amount, formattedDate, now, now];
+
+        db.run(insertSql, insertParams, function (err) {
           if (err) {
-            errors.push({ row: index + 2, message: err.message });
+            errors.push({ row: index + 2, message: err.message, data: row });
           } else {
             inserted.push({ row: index + 2, id: this.lastID });
           }
           insertNext(index + 1);
         });
-      } else {
-        const sql = `
-          INSERT INTO expense (remarks, transactionAmount, transactionDate, date_created, date_modified, status)
-          VALUES (?, ?, ?, ?, ?, 'A')
-        `;
-        db.run(sql, [remarks, amount, date, now, now], function (err) {
-          if (err) {
-            errors.push({ row: index + 2, message: err.message });
-          } else {
-            inserted.push({ row: index + 2, id: this.lastID });
-          }
-          insertNext(index + 1);
-        });
-      }
+      });
     };
 
     insertNext(0);

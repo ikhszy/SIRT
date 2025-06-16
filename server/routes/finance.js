@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const finance = require('../controllers/financeController');
+const authMiddleware = require("../middleware/authMiddleware");
 
 // INCOME
 router.get('/income', finance.getAllIncome);
@@ -10,17 +11,17 @@ router.put('/income/:id', finance.updateIncome);
 router.delete('/income/:id', finance.deleteIncome);
 
 // EXPENSE
-router.get('/expense', finance.getAllExpense);
-router.get('/expense/:id', finance.getExpenseById);
-router.post('/expense', finance.addExpense);
-router.put('/expense/:id', finance.updateExpense);
-router.delete('/expense/:id', finance.deleteExpense);
+router.get('/expense', authMiddleware, finance.getAllExpense);
+router.get('/expense/:id', authMiddleware, finance.getExpenseById);
+router.post('/expense', authMiddleware, finance.addExpense);
+router.put('/expense/:id', authMiddleware, finance.updateExpense);
+router.delete('/expense/:id', authMiddleware, finance.deleteExpense);
 
 // REPORT
-router.get('/report', finance.financeReport);
+router.get('/report', authMiddleware, authMiddleware, finance.financeReport);
 
 // BULK IMPORT
-router.get('/finance_import/preview', finance.previewFinanceImport);
-router.get('/finance_import/import', finance.bulkFinanceImport);
+router.get('/finance_import/preview', authMiddleware, finance.previewFinanceImport);
+router.get('/finance_import/import', authMiddleware, finance.bulkFinanceImport);
 
 module.exports = router;

@@ -88,6 +88,10 @@ export default function AdminLayout({ children }) {
             <i className="fas fa-hand-holding-usd"></i>
             {menuLabel('Keuangan')}
           </Link>
+          <Link to="/surat" className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center">
+            <i className="fas fa-file-contract"></i>
+            {menuLabel('Surat Pengantar')}
+          </Link>
 
           <div
             className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center justify-content-between"
@@ -122,6 +126,41 @@ export default function AdminLayout({ children }) {
               </Link>
             </div>
           )}
+          {/* Pengaturan Parent Menu */}
+          <div
+            className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center justify-content-between"
+            onClick={() => toggleSubmenu('pengaturan')}
+            style={{ cursor: 'pointer' }}
+          >
+            <div>
+              <i className="fas fa-cog"></i>
+              {menuLabel('Pengaturan')}
+            </div>
+            {!isSidebarCollapsed && (
+              <i className={`fas fa-chevron-${openMenus.pengaturan ? 'down' : 'right'}`}></i>
+            )}
+          </div>
+
+          {/* Submenu for Pengaturan */}
+          {openMenus.pengaturan && (
+            <div className="bg-primary ps-4">
+              <Link
+                to="/settings"
+                className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center"
+              >
+                <i className="fas fa-wrench"></i>
+                {menuLabel('Pengaturan Umum')}
+              </Link>
+              <Link
+                to="/users"
+                className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center"
+              >
+                <i className="fas fa-user-shield"></i>
+                {menuLabel('Pengguna')}
+              </Link>
+            </div>
+          )}
+
           <button
             onClick={handleLogout}
             className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center border-0"
