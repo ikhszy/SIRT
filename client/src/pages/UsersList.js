@@ -7,16 +7,30 @@ export default function UsersList() {
   const [users, setUsers] = useState([]);
 
   useEffect(() => {
-    axios.get('/api/users')
-      .then(res => setUsers(res.data))
-      .catch(err => console.error(err));
+    const token = localStorage.getItem('token'); // assumes format: 'Bearer <token>'
+    axios.get('/api/users', {
+      headers: {
+        Authorization: token
+      }
+    })
+    .then(res => setUsers(res.data))
+    .catch(err => {
+      console.error(err);
+      if (err.response?.status === 401) {
+        alert("Session expired. Please login again.");
+        window.location.href = "/login";
+      }
+    });
   }, []);
 
   const handleDelete = async (id) => {
   if (window.confirm('Yakin ingin menghapus pengguna ini?')) {
     try {
-      await axios.delete(`/api/users/${id}`);
-      setUsers(users.filter(user => user.userId !== id));
+      await axios.delete(`/api/users/${id}`, {
+        headers: {
+          Authorization: localStorage.getItem('token')
+        }
+      });
     } catch (err) {
       alert('Gagal menghapus pengguna');
     }
@@ -50,7 +64,7 @@ export default function UsersList() {
                 <td>{user.role || '-'}</td>
                 <td>{user.date_created}</td>
                 <td>
-                  <Link to={`/pengguna/edit/${user.userId}`} className="btn btn-sm btn-warning me-2">Edit</Link>
+                  <Link to={`/users/edit/${user.userId}`} className="btn btn-sm btn-warning me-2">Edit</Link>
                   <button
                     className="btn btn-sm btn-danger"
                     onClick={() => handleDelete(user.userId)}

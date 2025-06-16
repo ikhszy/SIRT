@@ -13,11 +13,28 @@ export default function EditUser() {
   });
   const [error, setError] = useState('');
 
+  // Helper to get token
+  const token = localStorage.getItem('token');
+
   useEffect(() => {
-    axios.get(`/api/users/${id}`)
-      .then(res => setFormData(res.data))
-      .catch(err => setError('Gagal mengambil data pengguna'));
-  }, [id]);
+    axios.get(`/api/users/${id}`, {
+      headers: { Authorization: token }
+    })
+      .then(res => setFormData(prev => ({
+        ...prev,
+        username: res.data.username,
+        role: res.data.role || ''
+      })))
+      .catch(err => {
+        if (err.response?.status === 404) {
+          setError('Pengguna tidak ditemukan');
+        } else if (err.response?.status === 401) {
+          setError('Unauthorized. Silakan login kembali.');
+        } else {
+          setError('Gagal mengambil data pengguna');
+        }
+      });
+  }, [id, token]);
 
   const handleChange = (e) => {
     setFormData(prev => ({
@@ -29,11 +46,23 @@ export default function EditUser() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    const payload = {
+      username: formData.username,
+      role: formData.role
+    };
+
+    if (formData.password && formData.password.trim() !== '') {
+      payload.password = formData.password;
+    }
+
     try {
-      await axios.put(`/api/users/${id}`, formData);
-      navigate('/pengguna');
+      await axios.put(`/api/users/${id}`, payload, {
+        headers: { Authorization: token }
+      });
+      navigate('/users');
     } catch (err) {
-      setError('Gagal memperbarui pengguna');
+      setError(err.response?.data?.error || 'Gagal memperbarui pengguna');
     }
   };
 
@@ -71,7 +100,7 @@ export default function EditUser() {
             <input
               type="text"
               name="role"
-              value={formData.role || ''}
+              value={formData.role}
               className="form-control"
               onChange={handleChange}
             />

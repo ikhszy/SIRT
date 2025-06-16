@@ -22,9 +22,15 @@ export default function AddUser() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
     try {
-      await axios.post('/api/users', formData);
-      navigate('/pengguna');
+      const token = localStorage.getItem('token');
+      await axios.post('/api/users', formData, {
+        headers: {
+          Authorization: token
+        }
+      });
+      navigate('/users');
     } catch (err) {
       setError(err.response?.data?.error || 'Terjadi kesalahan');
     }
