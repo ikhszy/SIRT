@@ -66,6 +66,12 @@ const FinanceReport = () => {
     currentPage * ITEMS_PER_PAGE
   );
 
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(1);
+    }
+  }, [filteredData.length]);
+
   const handleExportPDF = () => {
     const doc = new jsPDF();
     doc.setFontSize(14);
@@ -95,18 +101,22 @@ const FinanceReport = () => {
       finalY + 14
     );
 
-    doc.save('laporan_keuangan.pdf');
+    const today = new Date().toISOString().split('T')[0];
+    doc.save(`laporan_keuangan_${today}.pdf`);
   };
 
   return (
     <AdminLayout>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h1 className="h3 text-gray-800">
+            <i className="fas fa-balance-scale me-2"></i>Laporan Keuangan
+          </h1>
+        <Button variant="primary" size="sm" onClick={handleExportPDF}>
+          Export PDF
+        </Button>
+      </div>
+
       <Card className="shadow mb-4">
-        <Card.Header className="py-3 bg-primary text-white d-flex justify-content-between align-items-center">
-          <h5 className="m-0 font-weight-bold">Laporan Keuangan</h5>
-          <Button variant="light" size="sm" onClick={handleExportPDF}>
-            Export PDF
-          </Button>
-        </Card.Header>
         <Card.Body>
           <Form className="mb-4 p-3 border rounded bg-light">
             <Row className="gy-3">
@@ -179,9 +189,28 @@ const FinanceReport = () => {
                 >
                   {isLoading ? 'Memuat...' : 'Terapkan Filter'}
                 </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="ms-2"
+                  onClick={() =>
+                    setFilters({
+                      min_transactionDate: '',
+                      max_transactionDate: '',
+                      status: '',
+                      remarks: '',
+                    })
+                  }
+                >
+                  Reset
+                </Button>
               </Col>
             </Row>
           </Form>
+
+          {isLoading && (
+            <div className="text-center my-3 text-muted fst-italic">Memuat data...</div>
+          )}
 
           <Table striped bordered hover responsive className="align-middle">
             <thead className="table-primary">
@@ -241,7 +270,7 @@ const FinanceReport = () => {
             </div>
           </div>
 
-          <div className="mt-4 p-3 rounded shadow-sm" style={{ backgroundColor: '#f8f9fa' }}>
+          <div className="mt-4 p-3 rounded shadow-sm bg-light">
             <h6 className="mb-3 fw-semibold border-bottom pb-2">Ringkasan</h6>
             <p className="mb-1">
               <span className="fw-semibold text-success">Total Pemasukan:</span>{' '}
