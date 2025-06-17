@@ -1,148 +1,164 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import AdminLayout from '../layouts/AdminLayout';
-import api from '../api';
 import { useNavigate } from 'react-router-dom';
 
-export default function AddTransaction() {
-  const [type, setType] = useState('income');
-  const [residents, setResidents] = useState([]);
-  const [residentId, setResidentId] = useState('');
-  const [remarks, setRemarks] = useState('');
-  const [amount, setAmount] = useState('');
-  const [transactionDate, setTransactionDate] = useState('');
+const AddFinance = () => {
+  const [formData, setFormData] = useState({
+    tanggal: '',
+    kategori: '',
+    nominal: '',
+    keterangan: '',
+    jenisPendapatan: '',
+    bulan: '',
+    addressId: ''
+  });
+
+  const [address, setAddress] = useState([]);
+  const [perMonthAmount, setPerMonthAmount] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
   const navigate = useNavigate();
+  const token = localStorage.getItem('token');
 
   useEffect(() => {
-    api.get('/residents').then(res => setResidents(res.data));
-  }, []);
+    axios.get('/api/settings', { headers: { Authorization: token } })
+      .then(res => {
+        if (res.data.perMonthAmount) {
+          setPerMonthAmount(res.data.perMonthAmount);
+        }
+      });
+
+    axios.get('/api/address', { headers: { Authorization: token } })
+      .then(res => {
+        setAddress(res.data);
+      });
+  }, [token]);
 
   useEffect(() => {
-    // Auto-fill remarks if type is income and resident is selected
-    if (type === 'income' && residentId) {
-      const resident = residents.find(r => r.id === parseInt(residentId));
-      if (resident) {
-        setRemarks(`Iuran - ${resident.full_name}`);
-      }
+    // Auto-fill nominal if 'Iuran' is selected
+    if (formData.kategori === 'Pendapatan' && formData.jenisPendapatan === 'Iuran') {
+      setFormData(prev => ({ ...prev, nominal: perMonthAmount }));
     }
-  }, [type, residentId, residents]);
+  }, [formData.kategori, formData.jenisPendapatan, perMonthAmount]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!transactionDate || !remarks || !amount) {
-      alert('Please fill in all required fields.');
-      return;
+    setSaving(true);
+    try {
+      const payload = {
+        transactionDate: formData.tanggal,
+        transactionAmount: Number(formData.nominal),
+        remarks: formData.keterangan,
+        addressId: formData.jenisPendapatan === 'Iuran' ? formData.addressId : null,
+        residentId: null, // or get from somewhere if needed
+        months: formData.jenisPendapatan === 'Iuran' && formData.bulan ? [formData.bulan] : [],
+      };
+
+      await axios.post('/api/finance/income', payload, {
+        headers: {
+          Authorization: token,
+        },
+      });
+
+      navigate('/finance');
+    } catch (err) {
+      console.error(err);
+      setMessage('❌ Gagal menambahkan data.');
+    } finally {
+      setSaving(false);
     }
-
-    const payload = {
-      transactionDate,
-      remarks,
-      transactionAmount: parseFloat(amount),
-      status: 'A',
-    };
-
-    if (type === 'income') {
-      if (residentId) payload.residentId = parseInt(residentId);
-      await api.post('/finance/income', payload);
-    } else {
-      await api.post('/finance/expense', payload);
-    }
-
-    navigate('/finance');
   };
+
 
   return (
     <AdminLayout>
       <div className="container-fluid px-4">
-        <h1 className="h3 mb-4 text-gray-800">
-          <i className="fas fa-plus me-2"></i> Tambah Transaksi
-        </h1>
+        <h1 className="h3 mb-4">Tambah Transaksi Keuangan</h1>
 
         <div className="card shadow mb-4">
           <div className="card-body">
             <form onSubmit={handleSubmit}>
-              {/* Type Selector */}
               <div className="mb-3">
-                <label className="form-label">Jenis Transaksi</label>
-                <select
-                  className="form-select"
-                  value={type}
-                  onChange={(e) => {
-                    setType(e.target.value);
-                    setResidentId('');
-                    setRemarks('');
-                  }}
-                >
-                  <option value="income">Pemasukan</option>
-                  <option value="expense">Pengeluaran</option>
+                <label>Tanggal</label>
+                <input type="date" className="form-control" name="tanggal" value={formData.tanggal} onChange={handleChange} required />
+              </div>
+
+              <div className="mb-3">
+                <label>Kategori</label>
+                <select className="form-control" name="kategori" value={formData.kategori} onChange={handleChange} required>
+                  <option value="">-- Pilih --</option>
+                  <option value="Pendapatan">Pendapatan</option>
+                  <option value="Pengeluaran">Pengeluaran</option>
                 </select>
               </div>
 
-              {/* Resident Select (only for income) */}
-              {type === 'income' && (
-                <div className="mb-3">
-                  <label className="form-label">Warga (Opsional)</label>
-                  <select
-                    className="form-select"
-                    value={residentId}
-                    onChange={(e) => setResidentId(e.target.value)}
-                  >
-                    <option value="">-- Pilih Warga --</option>
-                    {residents.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.full_name} ({r.nik})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {formData.kategori === 'Pendapatan' && (
+                <>
+                  <div className="mb-3">
+                    <label>Jenis Pendapatan</label>
+                    <select className="form-control" name="jenisPendapatan" value={formData.jenisPendapatan} onChange={handleChange} required>
+                      <option value="">-- Pilih --</option>
+                      <option value="Iuran">Iuran</option>
+                      <option value="Lainnya">Lainnya</option>
+                    </select>
+                  </div>
+
+                  {formData.jenisPendapatan === 'Iuran' && (
+                    <>
+                      <div className="mb-3">
+                        <label>Bulan (MM-YYYY)</label>
+                        <input type="text" className="form-control" name="bulan" value={formData.bulan} onChange={handleChange} placeholder="Contoh: 06-2025" required />
+                      </div>
+                      <div className="mb-3">
+                        <label>Alamat</label>
+                        <select className="form-control" name="addressId" value={formData.addressId} onChange={handleChange} required>
+                          <option value="">-- Pilih Alamat --</option>
+                          {address.map((addr) => (
+                            <option key={addr.id} value={addr.id}>
+                              {addr.full_address}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  )}
+                </>
               )}
 
               <div className="mb-3">
-                <label className="form-label">Keterangan</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="mb-3">
-                <label className="form-label">Jumlah (Rp)</label>
+                <label>Nominal</label>
                 <input
                   type="number"
                   className="form-control"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  name="nominal"
+                  value={formData.nominal}
+                  onChange={handleChange}
+                  disabled={formData.kategori === 'Pendapatan' && formData.jenisPendapatan === 'Iuran'}
                   required
                 />
               </div>
 
               <div className="mb-3">
-                <label className="form-label">Tanggal Transaksi</label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={transactionDate}
-                  onChange={(e) => setTransactionDate(e.target.value)}
-                  required
-                />
+                <label>Keterangan</label>
+                <input type="text" className="form-control" name="keterangan" value={formData.keterangan} onChange={handleChange} />
               </div>
 
-              <button type="submit" className="btn btn-primary">
-                Simpan
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Menyimpan...' : 'Simpan'}
               </button>
-              <button
-                type="button"
-                className="btn btn-secondary ms-2"
-                onClick={() => navigate('/finance')}
-              >
-                Batal
-              </button>
+              {message && <p className="mt-3 text-muted">{message}</p>}
             </form>
           </div>
         </div>
       </div>
     </AdminLayout>
   );
-}
+};
+
+export default AddFinance;

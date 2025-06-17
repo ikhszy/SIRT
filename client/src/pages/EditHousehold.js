@@ -143,6 +143,7 @@ export default function EditHousehold() {
                   <option value="pemilik">Pemilik</option>
                   <option value="sewa">Kontrak / Sewa</option>
                   <option value="numpang_kk">Menumpang</option>
+                  <option value="kost">Kost</option>
                 </select>
               </div>
 

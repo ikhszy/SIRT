@@ -49,7 +49,9 @@ export default function Dashboard() {
 
   return (
     <AdminLayout>
-      <h1 className="mb-4">Dashboard</h1>
+      <h1 className="h3 text-gray-800">
+        <i className="fas fa-tachometer-alt"></i> DASHBOARD
+      </h1>
       <p>Selamat datang di aplikasi warga!</p>
 
       <div>

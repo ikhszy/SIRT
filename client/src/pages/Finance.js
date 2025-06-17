@@ -34,7 +34,7 @@ export default function Finance() {
   };
 
   const filtered = transactions.filter(t =>
-    t.remarks.toLowerCase().includes(searchTerm.toLowerCase())
+    (t.remarks || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalItems = filtered.length;

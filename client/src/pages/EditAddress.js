@@ -7,22 +7,38 @@ export default function EditAddress() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({
-    full_address: ''
-  });
+  const [activeTab, setActiveTab] = useState('form');
+  const [form, setForm] = useState({ full_address: '' });
+  const [donationHistory, setDonationHistory] = useState([]);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [yearOptions, setYearOptions] = useState([]);
   const [error, setError] = useState('');
 
+  // Generate 5 year options: 2 years before & after current
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await api.get(`/address/${id}`);
-        setForm(res.data);
-      } catch (err) {
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
+    setYearOptions(years);
+  }, []);
+
+  // Fetch address data
+  useEffect(() => {
+    api.get(`/address/${id}`)
+      .then(res => setForm(res.data))
+      .catch(err => {
         console.error('Failed to load address', err);
-      }
-    };
-    fetchData();
+        setError('Gagal memuat data alamat');
+      });
   }, [id]);
+
+  // Fetch donation history by selected year
+  useEffect(() => {
+    if (activeTab === 'history') {
+      api.get(`/finance/donations/${id}?year=${selectedYear}`)
+        .then(res => setDonationHistory(res.data))
+        .catch(err => console.error('Failed to fetch donation history', err));
+    }
+  }, [activeTab, id, selectedYear]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -34,7 +50,7 @@ export default function EditAddress() {
       await api.put(`/address/${id}`, form);
       navigate('/addresses');
     } catch (err) {
-      setError('Failed to update address');
+      setError('Gagal memperbarui alamat');
       console.error(err);
     }
   };
@@ -46,20 +62,97 @@ export default function EditAddress() {
           <i className="fas fa-edit me-2"></i> Ubah Alamat
         </h1>
 
+        {/* Tabs */}
+        <div className="mb-3">
+          <button
+            className={`btn btn-outline-primary me-2 ${activeTab === 'form' ? 'active' : ''}`}
+            onClick={() => setActiveTab('form')}
+          >
+            Data Alamat
+          </button>
+          <button
+            className={`btn btn-outline-success ${activeTab === 'history' ? 'active' : ''}`}
+            onClick={() => setActiveTab('history')}
+          >
+            Riwayat Iuran
+          </button>
+        </div>
+
         <div className="card shadow mb-4">
           <div className="card-body">
-            <form onSubmit={handleSubmit}>
-              <div className="mb-3">
-                <label className="form-label">Alamat</label>
-                <input className="form-control" name="full_address" value={form.full_address} onChange={handleChange} placeholder='isikan nama jalan saja...' required />
-              </div>
+            {activeTab === 'form' ? (
+              <form onSubmit={handleSubmit}>
+                <div className="mb-3">
+                  <label className="form-label">Alamat</label>
+                  <input
+                    className="form-control"
+                    name="full_address"
+                    value={form.full_address}
+                    onChange={handleChange}
+                    placeholder="Isikan nama jalan saja..."
+                    required
+                  />
+                </div>
 
-              {error && <div className="text-danger mb-3">{error}</div>}
+                {error && <div className="text-danger mb-3">{error}</div>}
 
-              <button className="btn btn-primary" type="submit">
-                <i className="fas fa-save me-1"></i> Save Changes
-              </button>
-            </form>
+                <button className="btn btn-primary" type="submit">
+                  <i className="fas fa-save me-1"></i> Simpan Perubahan
+                </button>
+              </form>
+            ) : (
+              <>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h5 className="mb-0">Riwayat Pembayaran Iuran</h5>
+                  <select
+                    className="form-select"
+                    style={{ maxWidth: 160 }}
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  >
+                    {yearOptions.map((year) => (
+                      <option key={year} value={year}>
+                        Tahun {year}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <table className="table table-bordered">
+                  <thead>
+                    <tr>
+                      <th>Bulan</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {donationHistory.map((entry, i) => (
+                      <tr key={i}>
+                        <td>{entry.month}</td>
+                        <td>
+                          <span className={`badge 
+                            ${entry.status === 'paid' ? 'bg-success' : ''}
+                            ${entry.status === 'pending' ? 'bg-warning text-dark' : ''}
+                            ${entry.status === 'late' ? 'bg-danger' : ''}
+                          `}>
+                            {entry.status === 'paid'
+                              ? 'Lunas'
+                              : entry.status === 'pending'
+                              ? 'Belum Bayar'
+                              : 'Terlambat'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {donationHistory.length === 0 && (
+                      <tr>
+                        <td colSpan="2" className="text-center text-muted">Belum ada data</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </>
+            )}
           </div>
         </div>
       </div>

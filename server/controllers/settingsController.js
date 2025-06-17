@@ -10,14 +10,14 @@ const getSettings = async (req, res) => {
 };
 
 const updateSettings = async (req, res) => {
-  const { rt, rw, kecamatan, kelurahan, kota, kodepos } = req.body;
+  const { rt, rw, kecamatan, kelurahan, kota, kodepos, perMonthAmount } = req.body;
   const query = `
     UPDATE commonSettings
-    SET rt = ?, rw = ?, kecamatan = ?, kelurahan = ?, kota = ?, kodepos = ?
+    SET rt = ?, rw = ?, kecamatan = ?, kelurahan = ?, kota = ?, kodepos = ?, perMonthAmount = ?
     WHERE id = 1
   `;
   try {
-    await db.run(query, [rt, rw, kecamatan, kelurahan, kota, kodepos]);
+    await db.run(query, [rt, rw, kecamatan, kelurahan, kota, kodepos, perMonthAmount]);
     res.json({ message: 'Settings updated successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });

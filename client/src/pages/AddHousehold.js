@@ -125,6 +125,7 @@ export default function AddHousehold() {
                   <option value="pemilik">Pemilik</option>
                   <option value="sewa">Kontrak / Sewa</option>
                   <option value="numpang_kk">Menumpang KK</option>
+                  <option value="kost">Kost</option>
                 </select>
               </div>
 

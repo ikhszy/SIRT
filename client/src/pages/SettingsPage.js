@@ -11,18 +11,22 @@ const SettingsPage = () => {
     kelurahan: '',
     kota: '',
     kodepos: '',
+    perMonthAmount: '', // New field
   });
 
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
 
+  const token = localStorage.getItem('token');
+
   useEffect(() => {
     axios
       .get('/api/settings', {
         headers: {
+          Authorization: token,
           'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache',
+          Pragma: 'no-cache',
         },
       })
       .then((res) => {
@@ -30,8 +34,11 @@ const SettingsPage = () => {
       })
       .catch((err) => {
         console.error('Failed to fetch settings:', err);
+        if (err.response?.status === 401) {
+          navigate('/login');
+        }
       });
-  }, []);
+  }, [token, navigate]);
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -41,14 +48,31 @@ const SettingsPage = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      await axios.put('/api/settings', formData);
+      await axios.put('/api/settings', formData, {
+        headers: {
+          Authorization: token,
+        },
+      });
       setMessage('✅ Pengaturan berhasil disimpan.');
     } catch (error) {
       console.error(error);
+      if (error.response?.status === 401) {
+        navigate('/login');
+      }
       setMessage('❌ Gagal menyimpan pengaturan.');
     }
     setSaving(false);
   };
+
+  const fields = [
+    { name: 'rt', label: 'RT' },
+    { name: 'rw', label: 'RW' },
+    { name: 'kecamatan', label: 'Kecamatan' },
+    { name: 'kelurahan', label: 'Kelurahan' },
+    { name: 'kota', label: 'Kota' },
+    { name: 'kodepos', label: 'Kode Pos' },
+    { name: 'perMonthAmount', label: 'Iuran per Bulan (Rp)', type: 'number' },
+  ];
 
   return (
     <AdminLayout>
@@ -60,14 +84,14 @@ const SettingsPage = () => {
         <div className="card shadow mb-4">
           <div className="card-body">
             <form onSubmit={handleSubmit}>
-              {['rt', 'rw', 'kecamatan', 'kelurahan', 'kota', 'kodepos'].map((field) => (
-                <div className="mb-3" key={field}>
-                  <label className="form-label text-capitalize">{field}</label>
+              {fields.map(({ name, label, type = 'text' }) => (
+                <div className="mb-3" key={name}>
+                  <label className="form-label">{label}</label>
                   <input
-                    type="text"
+                    type={type}
                     className="form-control"
-                    name={field}
-                    value={formData[field]}
+                    name={name}
+                    value={formData[name]}
                     onChange={handleChange}
                   />
                 </div>
