@@ -46,6 +46,7 @@ Yes, it’s made for **real-world RT/RW** operations, but with the smoothness of
 - [ ] Language switcher (Bahasa ↔ English) 🌍
 - [ ] Tooltips to guide new users 🧭
 - [ ] Help/FAQ menu for less techy folks 💡
+- [ ] Inventory menu (Track the movement of your RT items 🧹)
 
 ---
 
