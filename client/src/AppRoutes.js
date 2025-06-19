@@ -30,6 +30,13 @@ import EditUser from './pages/EditUser';
 import IntroLetterPage from './pages/SuratPengantar/IntroLetterPage';
 import SuratPreviewPage from './pages/SuratPengantar/SuratPreviewPage';
 import IntroLetterForm from './pages/SuratPengantar/IntroLetterForm';
+import InventoryList from './pages/Inventaris/InventoryList';
+import AddInventory from './pages/Inventaris/AddInventory';
+import EditInventory from './pages/Inventaris/EditInventory';
+import BulkImportInventory from "./pages/Inventaris/BulkImportInventory";
+import InventoryTransaction from "./pages/Inventaris/InventoryTransaction";
+import AddTransaction from './pages/Inventaris/AddTransaction';
+import ReturnTransaction from './pages/Inventaris/ReturnTransaction';
 import { startInactivityWatcher } from './utils/activityWatcher';
 
 const AppRoutes = () => {
@@ -84,6 +91,14 @@ const AppRoutes = () => {
       <Route path="/surat/:id" element={<ProtectedRoute><SuratPreviewPage /></ProtectedRoute>} />
       <Route path="/surat/" element={<ProtectedRoute><IntroLetterPage /></ProtectedRoute>} />
       <Route path="/surat/tambah" element={<ProtectedRoute><IntroLetterForm /></ProtectedRoute>} />
+
+      <Route path="/inventory" element={<ProtectedRoute><InventoryList /></ProtectedRoute>} />
+      <Route path="/inventory/add" element={<ProtectedRoute><AddInventory /></ProtectedRoute>} />
+      <Route path="/inventory/edit/:id" element={<ProtectedRoute><EditInventory /></ProtectedRoute>} />
+      <Route path="/import-inventory" element={<ProtectedRoute><BulkImportInventory /></ProtectedRoute>} />
+      <Route path="/inventory-transaction" element={<ProtectedRoute><InventoryTransaction /></ProtectedRoute>} />
+      <Route path="/inventory-transaction/add" element={<ProtectedRoute><AddTransaction /></ProtectedRoute>} />
+      <Route path="/inventory-transaction/return/:id" element={<ProtectedRoute><ReturnTransaction /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to={token ? "/" : "/login"} />} />
     </Routes>

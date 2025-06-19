@@ -1,0 +1,334 @@
+import React, { useEffect, useState } from "react";
+import AdminLayout from "../../layouts/AdminLayout";
+import api from "../../api";
+import { Link } from "react-router-dom";
+
+export default function InventoryTransaction() {
+  const [allTransactions, setAllTransactions] = useState([]); // All transactions, all types
+  const [displayedTransactions, setDisplayedTransactions] = useState([]); // Transactions for current tab & filters
+
+  const [filters, setFilters] = useState({
+    item_name: "",
+    borrower: "",
+    condition: "",
+    date: "",
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [currentTab, setCurrentTab] = useState("borrow");
+
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [total, setTotal] = useState(0);
+
+  // Fetch all transactions without filtering transaction_type, so isReturned can check all
+  const fetchAllTransactions = async () => {
+    setLoading(true);
+    try {
+      const queryParams = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) queryParams.append(key, value);
+      });
+      queryParams.append("page", page);
+      queryParams.append("limit", 1000); // large limit to get all (or consider backend endpoint for all)
+      // NO transaction_type filter here, to get both borrow & return
+
+      const res = await api.get(`/inventory-transactions?${queryParams.toString()}`);
+      setAllTransactions(res.data.data);
+    } catch (err) {
+      console.error("Error fetching all transactions:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch transactions for current tab with pagination & filters
+  const fetchDisplayedTransactions = async (pageNum = 1) => {
+    setLoading(true);
+    try {
+      const queryParams = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) queryParams.append(key, value);
+      });
+      queryParams.append("page", pageNum);
+      queryParams.append("limit", itemsPerPage);
+      queryParams.append("transaction_type", currentTab);
+
+      const res = await api.get(`/inventory-transactions?${queryParams.toString()}`);
+      setDisplayedTransactions(res.data.data);
+      setPage(res.data.page);
+      setTotalPages(res.data.totalPages);
+      setTotal(res.data.total);
+    } catch (err) {
+      console.error("Error fetching transactions:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update displayed transactions and allTransactions when filters, tab or pagination change
+  useEffect(() => {
+    fetchAllTransactions();
+    fetchDisplayedTransactions(1);
+  }, [filters, currentTab, itemsPerPage]);
+
+  // When page changes (pagination)
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+      fetchDisplayedTransactions(newPage);
+    }
+  };
+
+  const handleChange = (e) => {
+    setFilters((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleFilter = (e) => {
+    e.preventDefault();
+    fetchAllTransactions();
+    fetchDisplayedTransactions(1);
+  };
+
+  const formatDate = (datetimeStr) => {
+    return new Date(datetimeStr).toLocaleDateString("id-ID");
+  };
+
+  // Check if borrow transaction is already returned by searching allTransactions
+  const isReturned = (borrowTransaction) => {
+    return allTransactions.some((t) => {
+      return (
+        t.transaction_type === "return" &&
+        t.item_id === borrowTransaction.item_id &&
+        t.quantity === borrowTransaction.quantity &&
+        t.location === borrowTransaction.location &&
+        ((borrowTransaction.borrower_type === "warga" &&
+          t.borrower_id === borrowTransaction.borrower_id) ||
+          (borrowTransaction.borrower_type !== "warga" &&
+            t.borrower_name === borrowTransaction.borrower_name))
+      );
+    });
+  };
+
+  return (
+    <AdminLayout>
+      <div className="container-fluid px-4">
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h1 className="h3 text-gray-800 mb-0">
+            <i className="fas fa-history me-2"></i>Riwayat Transaksi Inventaris
+          </h1>
+          <Link to="/inventory-transaction/add" className="btn btn-success">
+            <i className="fas fa-plus me-1"></i> Tambah Transaksi
+          </Link>
+        </div>
+
+        <ul className="nav nav-tabs mb-3">
+          <li className="nav-item">
+            <button
+              className={`nav-link ${currentTab === "borrow" ? "active" : ""}`}
+              onClick={() => setCurrentTab("borrow")}
+            >
+              📦 Pinjam
+            </button>
+          </li>
+          <li className="nav-item">
+            <button
+              className={`nav-link ${currentTab === "return" ? "active" : ""}`}
+              onClick={() => setCurrentTab("return")}
+            >
+              ↩️ Kembali
+            </button>
+          </li>
+        </ul>
+
+        <form onSubmit={handleFilter} className="row g-3 mb-4">
+          <div className="col-md-3">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Nama Barang"
+              name="item_name"
+              value={filters.item_name}
+              onChange={handleChange}
+            />
+          </div>
+          <div className="col-md-3">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Peminjam"
+              name="borrower"
+              value={filters.borrower}
+              onChange={handleChange}
+            />
+          </div>
+          <div className="col-md-2">
+            <select
+              className="form-select"
+              name="condition"
+              value={filters.condition}
+              onChange={handleChange}
+            >
+              <option value="">-- Kondisi --</option>
+              <option value="baik">Baik</option>
+              <option value="rusak">Rusak</option>
+              <option value="hilang">Hilang</option>
+            </select>
+          </div>
+          <div className="col-md-2">
+            <input
+              type="date"
+              className="form-control"
+              name="date"
+              value={filters.date}
+              onChange={handleChange}
+            />
+          </div>
+          <div className="col-md-2">
+            <button type="submit" className="btn btn-primary w-100">
+              Filter
+            </button>
+          </div>
+        </form>
+
+        {loading ? (
+          <p>Loading...</p>
+        ) : (
+          <div className="table-responsive">
+            <table className="table table-bordered table-striped">
+              <thead className="table-primary">
+                <tr>
+                  <th>Tanggal</th>
+                  <th>Nama Barang</th>
+                  <th>Jumlah</th>
+                  <th>Tipe</th>
+                  <th>Peminjam</th>
+                  <th>Kondisi</th>
+                  <th>Lokasi</th>
+                  <th>Keterangan</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayedTransactions.map((t) => (
+                  <tr key={t.id}>
+                    <td>{formatDate(t.created_at)}</td>
+                    <td>{t.item_name}</td>
+                    <td>{t.quantity}</td>
+                    <td>
+                      <span
+                        className={
+                          t.transaction_type === "borrow"
+                            ? "badge bg-warning text-dark"
+                            : "badge bg-success"
+                        }
+                      >
+                        {t.transaction_type === "borrow" ? "Pinjam" : "Kembali"}
+                      </span>
+                    </td>
+                    <td>
+                      {t.borrower_type === "warga"
+                        ? t.borrower_name_resident
+                        : t.borrower_name}
+                    </td>
+                    <td>{t.condition}</td>
+                    <td>{t.location}</td>
+                    <td>{t.description || "-"}</td>
+                    <td>
+                      {t.transaction_type === "borrow" &&
+                        (isReturned(t) ? (
+                          <button className="btn btn-sm btn-secondary" disabled>
+                            Dikembalikan
+                          </button>
+                        ) : (
+                          <Link
+                            to={`/inventory-transaction/return/${t.id}`}
+                            state={{ transaction: t }}
+                            className="btn btn-sm btn-success"
+                          >
+                            <i className="fas fa-undo me-1"></i>Kembalikan
+                          </Link>
+                        ))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {!loading && (
+          <div className="d-flex justify-content-between align-items-center mt-3">
+            {/* Left side: Data summary */}
+            <div>
+              {total === 0
+                ? "Menampilkan 0 dari 0 data"
+                : `Menampilkan ${(page - 1) * itemsPerPage + 1} - ${Math.min(
+                    page * itemsPerPage,
+                    total
+                  )} dari ${total} data`}
+            </div>
+
+            {/* Middle: Items per page selector */}
+            <div className="d-flex align-items-center">
+              <label className="me-2">Data per halaman:</label>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(parseInt(e.target.value));
+                  setPage(1);
+                }}
+                className="form-select form-select-sm"
+                style={{ width: "auto" }}
+              >
+                {[5, 10, 25, 50, 100].map((num) => (
+                  <option key={num} value={num}>
+                    {num}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Right side: Pagination buttons */}
+            <nav>
+              <ul className="pagination mb-0">
+                <li className={`page-item ${page === 1 ? "disabled" : ""}`}>
+                  <button
+                    className="page-link"
+                    onClick={() => handlePageChange(page - 1)}
+                  >
+                    &laquo;
+                  </button>
+                </li>
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <li
+                    key={i + 1}
+                    className={`page-item ${page === i + 1 ? "active" : ""}`}
+                  >
+                    <button
+                      className="page-link"
+                      onClick={() => handlePageChange(i + 1)}
+                    >
+                      {i + 1}
+                    </button>
+                  </li>
+                ))}
+                <li className={`page-item ${page === totalPages ? "disabled" : ""}`}>
+                  <button
+                    className="page-link"
+                    onClick={() => handlePageChange(page + 1)}
+                  >
+                    &raquo;
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        )}
+      </div>
+    </AdminLayout>
+  );
+}

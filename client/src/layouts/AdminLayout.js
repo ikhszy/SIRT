@@ -10,7 +10,12 @@ export default function AdminLayout({ children }) {
     navigate('/login');
   };
 
-  const [openMenus, setOpenMenus] = useState({ dataWarga: false, laporan: false });
+  const [openMenus, setOpenMenus] = useState({
+    dataWarga: false,
+    laporan: false,
+    pengaturan: false,
+    inventaris: false, // ✅ added
+  });
 
   const toggleSubmenu = (menu) => {
     setOpenMenus((prev) => ({ ...prev, [menu]: !prev[menu] }));
@@ -20,7 +25,6 @@ export default function AdminLayout({ children }) {
     setSidebarCollapsed(!isSidebarCollapsed);
   };
 
-  // Helper to conditionally show text
   const menuLabel = (text) => !isSidebarCollapsed && <span className="ms-2">{text}</span>;
 
   return (
@@ -35,15 +39,16 @@ export default function AdminLayout({ children }) {
         }}
       >
         <div className="sidebar-heading text-center py-4 fs-5 fw-bold border-bottom w-100">
-          <i class="fa-solid fa-quote-left"></i> {!isSidebarCollapsed ? 'RT Admin' : 'RT'} <i class="fa-solid fa-quote-right"></i>
+          <i className="fa-solid fa-quote-left"></i> {!isSidebarCollapsed ? 'RT Admin' : 'RT'} <i className="fa-solid fa-quote-right"></i>
         </div>
+
         <div className="list-group list-group-flush w-100">
           <Link to="/" className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center">
             <i className="fas fa-tachometer-alt"></i>
             {menuLabel('Dashboard')}
           </Link>
-          
-          {/* Parent menu with dropdown toggle */}
+
+          {/* Data Warga */}
           <div
             className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center justify-content-between"
             onClick={() => toggleSubmenu('dataWarga')}
@@ -57,76 +62,87 @@ export default function AdminLayout({ children }) {
               <i className={`fas fa-chevron-${openMenus.dataWarga ? 'down' : 'right'}`}></i>
             )}
           </div>
-
-          {/* Submenu */}
           {openMenus.dataWarga && (
             <div className="bg-primary ps-4">
-              <Link
-                to="/residents"
-                className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center"
-              >
+              <Link to="/residents" className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center">
                 <i className="fas fa-user"></i>
                 {menuLabel('Data Warga')}
               </Link>
-              <Link
-                to="/households"
-                className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center"
-              >
+              <Link to="/households" className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center">
                 <i className="fas fa-home"></i>
                 {menuLabel('Data Kartu Keluarga')}
               </Link>
-              <Link
-                to="/addresses"
-                className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center"
-              >
+              <Link to="/addresses" className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center">
                 <i className="fas fa-map-marker-alt"></i>
                 {menuLabel('Data Alamat')}
               </Link>
             </div>
           )}
-          <Link to="/finance" className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center">
-            <i className="fas fa-hand-holding-usd"></i>
-            {menuLabel('Keuangan')}
-          </Link>
+
           <Link to="/surat" className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center">
             <i className="fas fa-file-contract"></i>
             {menuLabel('Surat Pengantar')}
           </Link>
+          <Link to="/finance" className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center">
+            <i className="fas fa-hand-holding-usd"></i>
+            {menuLabel('Keuangan')}
+          </Link>
 
+          {/* ✅ Inventaris */}
+          <div
+            className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center justify-content-between"
+            onClick={() => toggleSubmenu('inventaris')}
+            style={{ cursor: 'pointer' }}
+          >
+            <div>
+              <i className="fas fa-boxes-stacked"></i>
+              {menuLabel('Inventaris')}
+            </div>
+            {!isSidebarCollapsed && (
+              <i className={`fas fa-chevron-${openMenus.inventaris ? 'down' : 'right'}`}></i>
+            )}
+          </div>
+          {openMenus.inventaris && (
+            <div className="bg-primary ps-4">
+              <Link to="/inventory" className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center">
+                <i className="fas fa-clipboard-list"></i>
+                {menuLabel('Kelola Inventaris')}
+              </Link>
+              <Link to="/inventory-transaction" className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center">
+                <i className="fas fa-handshake"></i>
+                {menuLabel('Pemakaian Inventaris')}
+              </Link>
+            </div>
+          )}
+
+          {/* Laporan */}
           <div
             className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center justify-content-between"
             onClick={() => toggleSubmenu('laporan')}
             style={{ cursor: 'pointer' }}
           >
             <div>
-              <i class="fa-solid fa-chart-simple"></i>
+              <i className="fa-solid fa-chart-simple"></i>
               {menuLabel('Laporan')}
             </div>
             {!isSidebarCollapsed && (
               <i className={`fas fa-chevron-${openMenus.laporan ? 'down' : 'right'}`}></i>
             )}
           </div>
-
-          {/* Submenu */}
           {openMenus.laporan && (
             <div className="bg-primary ps-4">
-              <Link
-                to="/report"
-                className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center"
-              >
+              <Link to="/report" className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center">
                 <i className="fas fa-table"></i>
                 {menuLabel('Laporan Data Warga')}
               </Link>
-              <Link
-                to="/finance/report"
-                className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center"
-              >
+              <Link to="/finance/report" className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center">
                 <i className="fas fa-balance-scale"></i>
                 {menuLabel('Laporan Keuangan')}
               </Link>
             </div>
           )}
-          {/* Pengaturan Parent Menu */}
+
+          {/* Pengaturan */}
           <div
             className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center justify-content-between"
             onClick={() => toggleSubmenu('pengaturan')}
@@ -140,21 +156,13 @@ export default function AdminLayout({ children }) {
               <i className={`fas fa-chevron-${openMenus.pengaturan ? 'down' : 'right'}`}></i>
             )}
           </div>
-
-          {/* Submenu for Pengaturan */}
           {openMenus.pengaturan && (
             <div className="bg-primary ps-4">
-              <Link
-                to="/settings"
-                className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center"
-              >
+              <Link to="/settings" className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center">
                 <i className="fas fa-wrench"></i>
                 {menuLabel('Pengaturan Umum')}
               </Link>
-              <Link
-                to="/users"
-                className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center"
-              >
+              <Link to="/users" className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center">
                 <i className="fas fa-user-shield"></i>
                 {menuLabel('Pengguna')}
               </Link>
@@ -173,7 +181,7 @@ export default function AdminLayout({ children }) {
 
       {/* Page Content */}
       <div id="page-content-wrapper" className="flex-grow-1 bg-light no-print" style={{ minHeight: '100vh' }}>
-        {/* Topbar with toggle */}
+        {/* Topbar */}
         <div className="d-flex justify-content-between align-items-center p-2 border-bottom bg-white shadow-sm">
           <button onClick={toggleSidebar} className="btn btn-link d-md-inline rounded-circle text-dark">
             <i className="fas fa-bars"></i>

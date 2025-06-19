@@ -19,6 +19,8 @@ const financeRoutes = require('./routes/finance');
 const settingsRoutes = require('./routes/settingsRoutes');
 const usersRoutes = require('./routes/usersRoutes');
 const introLettersRoutes = require('./routes/introLettersRoutes');
+const inventoryRoutes = require('./routes/inventoryRoutes');
+const inventoryTransactionsRoutes = require('./routes/inventoryTransactionsRoutes');
 
 app.use(cors());
 app.use(express.json());
@@ -42,6 +44,8 @@ app.use("/api/finance", financeRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/users", usersRoutes);
 app.use('/api/surat', introLettersRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/inventory-transactions', inventoryTransactionsRoutes);
 
 const PORT = 5000;
 app.listen(PORT, () => {
