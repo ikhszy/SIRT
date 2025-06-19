@@ -26,7 +26,19 @@ const getAllLetters = async (req, res) => {
 
     const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
 
-    const sql = `
+    // Get total count
+    const countSql = `
+      SELECT COUNT(*) AS total
+      FROM intro_letters il
+      LEFT JOIN residents r ON il.nik = r.nik
+      ${whereClause}
+    `;
+    const countResult = await db.get(countSql, values);
+    const total = countResult.total;
+    const totalPages = Math.ceil(total / limit);
+
+    // Get paginated data
+    const dataSql = `
       SELECT il.*, r.full_name
       FROM intro_letters il
       LEFT JOIN residents r ON il.nik = r.nik
@@ -34,17 +46,19 @@ const getAllLetters = async (req, res) => {
       ORDER BY il.date_created DESC
       LIMIT ? OFFSET ?
     `;
+    const dataRows = await db.all(dataSql, [...values, parseInt(limit), parseInt(offset)]);
 
-    values.push(parseInt(limit), parseInt(offset));
-
-    const rows = await db.all(sql, values);
-    res.json(rows);
+    res.json({
+      data: dataRows,
+      total,
+      page: parseInt(page),
+      totalPages
+    });
   } catch (err) {
     console.error('GET letters failed:', err);
     res.status(500).json({ error: err.message });
   }
 };
-
 
 const getLetterById = async (req, res) => {
   try {

@@ -14,8 +14,32 @@ function cleanup(db, filePath, res, result) {
 }
 
 const getAllInventory = async (req, res) => {
+  const { name, condition, location, description } = req.query;
+  let filters = [];
+  let values = [];
+
+  if (name) {
+    filters.push("name LIKE ?");
+    values.push(`%${name}%`);
+  }
+  if (condition) {
+    filters.push("condition = ?");
+    values.push(condition);
+  }
+  if (location) {
+    filters.push("location LIKE ?");
+    values.push(`%${location}%`);
+  }
+  if (description) {
+    filters.push("description LIKE ?");
+    values.push(`%${description}%`);
+  }
+
+  const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+  const sql = `SELECT * FROM inventory_items ${whereClause} ORDER BY name ASC`;
+
   try {
-    const rows = await db.all('SELECT * FROM inventory_items ORDER BY name ASC');
+    const rows = await db.all(sql, values);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -4,9 +4,15 @@ import api from "../../api";
 import { Link } from "react-router-dom";
 
 export default function InventoryTransaction() {
-  const [allTransactions, setAllTransactions] = useState([]); // All transactions, all types
-  const [displayedTransactions, setDisplayedTransactions] = useState([]); // Transactions for current tab & filters
+  const [allTransactions, setAllTransactions] = useState([]);
+  const [displayedTransactions, setDisplayedTransactions] = useState([]);
 
+  const [formFilters, setFormFilters] = useState({
+    item_name: "",
+    borrower: "",
+    condition: "",
+    date: "",
+  });
   const [filters, setFilters] = useState({
     item_name: "",
     borrower: "",
@@ -19,11 +25,9 @@ export default function InventoryTransaction() {
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [total, setTotal] = useState(0);
 
-  // Fetch all transactions without filtering transaction_type, so isReturned can check all
   const fetchAllTransactions = async () => {
     setLoading(true);
     try {
@@ -31,10 +35,7 @@ export default function InventoryTransaction() {
       Object.entries(filters).forEach(([key, value]) => {
         if (value) queryParams.append(key, value);
       });
-      queryParams.append("page", page);
-      queryParams.append("limit", 1000); // large limit to get all (or consider backend endpoint for all)
-      // NO transaction_type filter here, to get both borrow & return
-
+      queryParams.append("limit", 1000);
       const res = await api.get(`/inventory-transactions?${queryParams.toString()}`);
       setAllTransactions(res.data.data);
     } catch (err) {
@@ -44,7 +45,6 @@ export default function InventoryTransaction() {
     }
   };
 
-  // Fetch transactions for current tab with pagination & filters
   const fetchDisplayedTransactions = async (pageNum = 1) => {
     setLoading(true);
     try {
@@ -68,13 +68,30 @@ export default function InventoryTransaction() {
     }
   };
 
-  // Update displayed transactions and allTransactions when filters, tab or pagination change
   useEffect(() => {
-    fetchAllTransactions();
+    if (currentTab === "borrow") {
+      fetchAllTransactions();
+    }
+
     fetchDisplayedTransactions(1);
   }, [filters, currentTab, itemsPerPage]);
 
-  // When page changes (pagination)
+  const handleChange = (e) => {
+    setFormFilters((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleFilter = (e) => {
+    e.preventDefault();
+    setFilters({ ...formFilters });
+
+    // Only fetch all if on borrow tab
+    if (currentTab === "borrow") {
+      fetchAllTransactions();
+    }
+
+    fetchDisplayedTransactions(1);
+  };
+
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setPage(newPage);
@@ -82,21 +99,8 @@ export default function InventoryTransaction() {
     }
   };
 
-  const handleChange = (e) => {
-    setFilters((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+  const formatDate = (datetimeStr) => new Date(datetimeStr).toLocaleDateString("id-ID");
 
-  const handleFilter = (e) => {
-    e.preventDefault();
-    fetchAllTransactions();
-    fetchDisplayedTransactions(1);
-  };
-
-  const formatDate = (datetimeStr) => {
-    return new Date(datetimeStr).toLocaleDateString("id-ID");
-  };
-
-  // Check if borrow transaction is already returned by searching allTransactions
   const isReturned = (borrowTransaction) => {
     return allTransactions.some((t) => {
       return (
@@ -150,7 +154,7 @@ export default function InventoryTransaction() {
               className="form-control"
               placeholder="Nama Barang"
               name="item_name"
-              value={filters.item_name}
+              value={formFilters.item_name}
               onChange={handleChange}
             />
           </div>
@@ -160,7 +164,7 @@ export default function InventoryTransaction() {
               className="form-control"
               placeholder="Peminjam"
               name="borrower"
-              value={filters.borrower}
+              value={formFilters.borrower}
               onChange={handleChange}
             />
           </div>
@@ -168,7 +172,7 @@ export default function InventoryTransaction() {
             <select
               className="form-select"
               name="condition"
-              value={filters.condition}
+              value={formFilters.condition}
               onChange={handleChange}
             >
               <option value="">-- Kondisi --</option>
@@ -182,7 +186,7 @@ export default function InventoryTransaction() {
               type="date"
               className="form-control"
               name="date"
-              value={filters.date}
+              value={formFilters.date}
               onChange={handleChange}
             />
           </div>
@@ -259,10 +263,8 @@ export default function InventoryTransaction() {
           </div>
         )}
 
-        {/* Pagination Controls */}
         {!loading && (
           <div className="d-flex justify-content-between align-items-center mt-3">
-            {/* Left side: Data summary */}
             <div>
               {total === 0
                 ? "Menampilkan 0 dari 0 data"
@@ -271,8 +273,6 @@ export default function InventoryTransaction() {
                     total
                   )} dari ${total} data`}
             </div>
-
-            {/* Middle: Items per page selector */}
             <div className="d-flex align-items-center">
               <label className="me-2">Data per halaman:</label>
               <select
@@ -291,8 +291,6 @@ export default function InventoryTransaction() {
                 ))}
               </select>
             </div>
-
-            {/* Right side: Pagination buttons */}
             <nav>
               <ul className="pagination mb-0">
                 <li className={`page-item ${page === 1 ? "disabled" : ""}`}>

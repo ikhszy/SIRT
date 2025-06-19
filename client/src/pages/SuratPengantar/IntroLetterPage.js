@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Table, Button, Pagination, Form, Row, Col, Card
+  Table, Button, Form, Row, Col, Card
 } from 'react-bootstrap';
 import api from '../../api';
 import AdminLayout from '../../layouts/AdminLayout';
@@ -9,7 +9,9 @@ import { useNavigate } from 'react-router-dom';
 export default function IntroLetterPage() {
   const [letters, setLetters] = useState([]);
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -19,22 +21,24 @@ export default function IntroLetterPage() {
   useEffect(() => {
     fetchLetters();
     // eslint-disable-next-line
-  }, [page]);
+  }, [page, itemsPerPage]);
 
   const fetchLetters = async () => {
     try {
       const res = await api.get(`/surat`, {
         params: {
           page,
-          limit: 10,
+          limit: itemsPerPage,
           search,
           status,
           startDate,
           endDate
         }
       });
-      setLetters(res.data);
-      setHasMore(res.data.length === 10);
+
+      setLetters(res.data.data || []);
+      setTotal(res.data.total || 0);
+      setTotalPages(res.data.totalPages || 1);
     } catch (err) {
       console.error('Failed to fetch letters:', err);
     }
@@ -131,13 +135,46 @@ export default function IntroLetterPage() {
               </tbody>
             </Table>
 
-            {/* Pagination */}
-            <div className="d-flex justify-content-end">
-              <Pagination>
-                <Pagination.Prev disabled={page === 1} onClick={() => setPage(p => p - 1)} />
-                <Pagination.Item active>{page}</Pagination.Item>
-                <Pagination.Next disabled={!hasMore} onClick={() => setPage(p => p + 1)} />
-              </Pagination>
+            {/* Pagination Controls */}
+            <div className="d-flex justify-content-between align-items-center mt-3">
+              <div>
+                {total === 0
+                  ? 'Menampilkan 0 dari 0 data'
+                  : `Menampilkan ${(page - 1) * itemsPerPage + 1} - ${Math.min(page * itemsPerPage, total)} dari ${total} data`}
+              </div>
+
+              <div className="d-flex align-items-center">
+                <label className="me-2">Data per halaman:</label>
+                <Form.Select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(parseInt(e.target.value));
+                    setPage(1);
+                  }}
+                  className="form-select-sm"
+                  style={{ width: 'auto' }}
+                >
+                  {[5, 10, 25, 50, 100].map((num) => (
+                    <option key={num} value={num}>{num}</option>
+                  ))}
+                </Form.Select>
+              </div>
+
+              <nav>
+                <ul className="pagination mb-0">
+                  <li className={`page-item ${page === 1 ? 'disabled' : ''}`}>
+                    <button className="page-link" onClick={() => setPage(page - 1)}>&laquo;</button>
+                  </li>
+                  {Array.from({ length: totalPages }, (_, i) => (
+                    <li key={i + 1} className={`page-item ${page === i + 1 ? 'active' : ''}`}>
+                      <button className="page-link" onClick={() => setPage(i + 1)}>{i + 1}</button>
+                    </li>
+                  ))}
+                  <li className={`page-item ${page === totalPages ? 'disabled' : ''}`}>
+                    <button className="page-link" onClick={() => setPage(page + 1)}>&raquo;</button>
+                  </li>
+                </ul>
+              </nav>
             </div>
           </Card.Body>
         </Card>

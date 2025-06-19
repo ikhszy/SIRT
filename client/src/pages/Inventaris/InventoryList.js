@@ -5,8 +5,13 @@ import { useNavigate } from 'react-router-dom';
 
 export default function InventoryList() {
   const [inventories, setInventories] = useState([]);
+  const [filters, setFilters] = useState({
+    name: '',
+    condition: '',
+    location: '',
+    description: '',
+  });
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteId, setDeleteId] = useState(null);
@@ -18,41 +23,45 @@ export default function InventoryList() {
     fetchInventories();
   }, []);
 
-  async function fetchInventories() {
+  const fetchInventories = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/inventory');
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) params.append(key, value);
+      });
+
+      const response = await api.get(`/inventory?${params.toString()}`);
       setInventories(response.data);
     } catch (error) {
       console.error('Failed to fetch inventory:', error);
     }
     setLoading(false);
-  }
+  };
 
-  const filteredInventories = inventories.filter(item => {
-    const q = searchTerm.toLowerCase();
-    return (
-      item.name?.toLowerCase().includes(q) ||
-      item.condition?.toLowerCase().includes(q) ||
-      item.location?.toLowerCase().includes(q) ||
-      item.description?.toLowerCase().includes(q)
-    );
-  });
+  const handleFilterChange = (e) => {
+    setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
 
-  const totalItems = filteredInventories.length;
+  const handleFilterSubmit = (e) => {
+    e.preventDefault();
+    setCurrentPage(1);
+    fetchInventories();
+  };
+
+  const totalItems = inventories.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-
-  const paginatedInventories = filteredInventories.slice(
+  const paginatedInventories = inventories.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  function confirmDelete(id) {
+  const confirmDelete = (id) => {
     setDeleteId(id);
     setShowConfirm(true);
-  }
+  };
 
-  async function handleDelete() {
+  const handleDelete = async () => {
     try {
       await api.delete(`/inventory/${deleteId}`);
       setShowConfirm(false);
@@ -61,7 +70,7 @@ export default function InventoryList() {
     } catch (error) {
       console.error('Delete failed:', error);
     }
-  }
+  };
 
   return (
     <AdminLayout>
@@ -71,28 +80,66 @@ export default function InventoryList() {
             <i className="fas fa-boxes me-2"></i> Data Inventaris
           </h1>
           <div>
-            <a href="/inventory/add" className="btn btn-success mb-3">
+            <a href="/inventory/add" className="btn btn-success me-2 mb-2">
               <i className="fas fa-plus me-1"></i> Tambah Inventaris
             </a>
-            <a href="/import-inventory" className="btn btn-warning mb-3">
+            <a href="/import-inventory" className="btn btn-warning mb-2">
               <i className="fas fa-file-import me-1"></i> Import Inventaris
             </a>
           </div>
         </div>
 
-        <div className="mb-3">
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Cari nama, kondisi, lokasi, deskripsi..."
-            value={searchTerm}
-            onChange={e => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-          />
-        </div>
+        {/* Filters */}
+        <form onSubmit={handleFilterSubmit} className="row g-3 mb-4">
+          <div className="col-md-3">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Nama Barang"
+              name="name"
+              value={filters.name}
+              onChange={handleFilterChange}
+            />
+          </div>
+          <div className="col-md-2">
+            <select
+              className="form-select"
+              name="condition"
+              value={filters.condition}
+              onChange={handleFilterChange}
+            >
+              <option value="">-- Kondisi --</option>
+              <option value="baik">Baik</option>
+              <option value="rusak">Rusak</option>
+              <option value="hilang">Hilang</option>
+            </select>
+          </div>
+          <div className="col-md-3">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Lokasi"
+              name="location"
+              value={filters.location}
+              onChange={handleFilterChange}
+            />
+          </div>
+          <div className="col-md-3">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Deskripsi"
+              name="description"
+              value={filters.description}
+              onChange={handleFilterChange}
+            />
+          </div>
+          <div className="col-md-1">
+            <button type="submit" className="btn btn-primary w-100">Filter</button>
+          </div>
+        </form>
 
+        {/* Table */}
         <div className="card shadow mb-4">
           <div className="card-body">
             {loading ? (
@@ -149,7 +196,7 @@ export default function InventoryList() {
                   </table>
                 </div>
 
-                {/* Pagination & Page Size */}
+                {/* Pagination */}
                 <div className="d-flex justify-content-between align-items-center mt-3">
                   <div>
                     Menampilkan {(currentPage - 1) * itemsPerPage + 1} -{' '}
@@ -167,9 +214,7 @@ export default function InventoryList() {
                       }}
                     >
                       {[5, 10, 25, 50, 100].map(num => (
-                        <option key={num} value={num}>
-                          {num}
-                        </option>
+                        <option key={num} value={num}>{num}</option>
                       ))}
                     </select>
                   </div>
@@ -196,9 +241,7 @@ export default function InventoryList() {
                           </button>
                         </li>
                       ))}
-                      <li
-                        className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}
-                      >
+                      <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
                         <button
                           className="page-link"
                           onClick={() => setCurrentPage(currentPage + 1)}
@@ -219,20 +262,16 @@ export default function InventoryList() {
           className={`modal fade ${showConfirm ? 'show d-block' : ''}`}
           tabIndex="-1"
           role="dialog"
-          aria-labelledby="confirmDeleteModalLabel"
           aria-hidden={!showConfirm}
           style={showConfirm ? { backgroundColor: 'rgba(0,0,0,0.5)' } : {}}
         >
           <div className="modal-dialog modal-dialog-centered" role="document">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title" id="confirmDeleteModalLabel">
-                  Konfirmasi Hapus
-                </h5>
+                <h5 className="modal-title">Konfirmasi Hapus</h5>
                 <button
                   type="button"
                   className="btn-close"
-                  aria-label="Close"
                   onClick={() => setShowConfirm(false)}
                 ></button>
               </div>
@@ -240,14 +279,10 @@ export default function InventoryList() {
                 Apakah Anda yakin ingin menghapus data inventaris ini?
               </div>
               <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setShowConfirm(false)}
-                >
+                <button className="btn btn-secondary" onClick={() => setShowConfirm(false)}>
                   Batal
                 </button>
-                <button type="button" className="btn btn-danger" onClick={handleDelete}>
+                <button className="btn btn-danger" onClick={handleDelete}>
                   Hapus
                 </button>
               </div>
