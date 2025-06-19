@@ -26,7 +26,7 @@ export function startInactivityWatcher(timeout = 1800000, warningBefore = 300000
     logoutTimer = setTimeout(() => {
       localStorage.removeItem("token");
       localStorage.removeItem("loginTime");
-      window.location.href = "/login";
+      window.location.href = "/";
     }, timeout);
   };
 

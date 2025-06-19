@@ -56,7 +56,7 @@ export default function ReturnTransaction() {
       });
 
       setMessage("✅ Barang berhasil dikembalikan.");
-      setTimeout(() => navigate("/inventory-transactions"), 2000);
+      setTimeout(() => navigate("/inventory-transaction"), 2000);
     } catch (err) {
       setError("❌ Gagal mengembalikan barang: " + (err.response?.data?.error || err.message));
     } finally {

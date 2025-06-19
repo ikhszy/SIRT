@@ -67,15 +67,15 @@ export default function Residents() {
   return (
     <AdminLayout>
       <div className="container-fluid px-4">
-        <div className="d-sm-flex align-items-center justify-content-between mb-4">
+        <div className="d-flex justify-content-between align-items-center mb-4">
           <h1 className="h3 text-gray-800">
             <i className="fas fa-users me-2"></i> Data Warga
           </h1>
             <div>
-              <a href="/residents/add" className="btn btn-success">
+              <a href="/residents/add" className="btn btn-success mb-3">
                 <i className="fas fa-plus"></i> Tambah Data Warga
               </a>
-              <a href="/residents/import" className="btn btn-warning">
+              <a href="/residents/import" className="btn btn-primary mb-3 ms-2">
                 <i className="fas fa-file-import"></i> Import Data Warga
               </a>
             </div>
@@ -107,7 +107,7 @@ export default function Residents() {
                     <th>Tempat Lahir</th>
                     <th>Tanggal Lahir</th>
                     <th>No. KK</th>
-                    <th>Status Domisili</th>
+                    <th>Status NIK</th>
                     <th>Actions</th>
                   </tr>
                 </thead>

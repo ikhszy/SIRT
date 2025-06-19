@@ -25,7 +25,7 @@ export default function LoginPage() {
 
       // Save token with 'Bearer' prefix for consistency
       localStorage.setItem('token', `Bearer ${res.data.token}`);
-      navigate('/');
+      navigate('/dashboard');
     } catch (err) {
       console.error('Login error:', err);
       setError('Username atau password salah');

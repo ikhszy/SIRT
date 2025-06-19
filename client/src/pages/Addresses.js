@@ -53,7 +53,7 @@ export default function Addresses() {
             <a href="/addresses/add" className="btn btn-success mb-3">
               <i className="fas fa-plus me-1"></i> Tambah Alamat
             </a>
-            <a href="/address/import" className="btn btn-warning mb-3">
+            <a href="/address/import" className="btn btn-primary mb-3 ms-2">
               <i className="fas fa-file-import"></i> Import Alamat
             </a>
           </div>
@@ -78,7 +78,7 @@ export default function Addresses() {
               <thead className="table-primary">
                 <tr>
                   <th>Alamat Lengkap</th>
-                  <th>Aksi</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -90,17 +90,17 @@ export default function Addresses() {
                       </td>
                       <td>
                         <button
-                          className="btn btn-warning btn-sm me-2"
+                          className="btn btn-sm btn-warning me-2"
                           onClick={() => navigate(`/addresses/edit/${a.id}`)}
                         >
-                          Edit
+                          <i className="fas fa-edit"></i>
                         </button>
                         <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => handleDelete(a.id)}
-                        >
-                          Delete
-                        </button>
+                            className="btn btn-sm btn-danger"
+                            onClick={() => handleDelete(a.id)}
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
                       </td>
                     </tr>
                   ))
@@ -137,7 +137,7 @@ export default function Addresses() {
                   ))}
                 </select>
               </div>
-
+ 
               <nav>
                 <ul className="pagination mb-0">
                   <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>

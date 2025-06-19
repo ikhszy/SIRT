@@ -2,15 +2,13 @@ import React, { useEffect, useState } from "react";
 import AdminLayout from "../../layouts/AdminLayout";
 import api from "../../api";
 import { useNavigate } from "react-router-dom";
+import ModalDialog from "../../Components/ModalDialog";
 
 export default function AddTransaction() {
   const navigate = useNavigate();
 
   const [items, setItems] = useState([]);
   const [residents, setResidents] = useState([]);
-  const [showToast, setShowToast] = useState(false);
-  const [message, setMessage] = useState({ text: "", type: "success" });
-
   const [formData, setFormData] = useState({
     item_id: "",
     quantity: 1,
@@ -22,9 +20,14 @@ export default function AddTransaction() {
     borrower_name: "",
     transaction_type: "borrow",
   });
-
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+
+  const [modal, setModal] = useState({
+    show: false,
+    title: "",
+    message: "",
+    isSuccess: true,
+  });
 
   const selectedItem = items.find((item) => item.id == formData.item_id);
   const availableQty = selectedItem?.quantity ?? null;
@@ -40,55 +43,73 @@ export default function AddTransaction() {
       ...prev,
       [name]: value,
     }));
-    setMessage({ text: "", type: "success" });
-    setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setMessage({ text: "", type: "success" });
 
     // Validation
-    if (!formData.item_id) return setError("Barang harus dipilih.");
-    if (formData.quantity < 1) return setError("Jumlah minimal 1.");
-    if (formData.borrower_type === "warga" && !formData.borrower_id)
-      return setError("Warga harus dipilih.");
-    if (formData.borrower_type === "bukan warga" && !formData.borrower_name.trim())
-      return setError("Nama peminjam harus diisi.");
-    if (!formData.location.trim()) return setError("Lokasi harus diisi.");
+    if (!formData.item_id) {
+      return showError("Barang harus dipilih.");
+    }
 
-    if (formData.transaction_type === "borrow" && availableQty !== null && formData.quantity > availableQty) {
-      return setError(`Jumlah melebihi stok tersedia (${availableQty}).`);
+    if (formData.quantity < 1) {
+      return showError("Jumlah minimal 1.");
+    }
+
+    if (
+      formData.transaction_type === "borrow" &&
+      availableQty !== null &&
+      formData.quantity > availableQty
+    ) {
+      return showError(`Jumlah melebihi stok tersedia (${availableQty}).`);
+    }
+
+    if (!formData.location.trim()) {
+      return showError("Lokasi harus diisi.");
+    }
+
+    if (
+      formData.borrower_type === "warga" &&
+      !formData.borrower_id
+    ) {
+      return showError("Warga harus dipilih.");
+    }
+
+    if (
+      formData.borrower_type === "bukan warga" &&
+      !formData.borrower_name.trim()
+    ) {
+      return showError("Nama peminjam harus diisi.");
     }
 
     setLoading(true);
 
     try {
       await api.post("/inventory-transactions", formData);
-      setMessage({ text: "✅ Transaksi berhasil disimpan", type: "success" });
-      setShowToast(true);
+
+      setModal({
+        show: true,
+        title: "Sukses",
+        message: "Peminjaman barang berhasil!",
+        isSuccess: true,
+      });
 
       setTimeout(() => navigate("/inventory-transaction"), 1500);
-
-      // Reset form except item_id
-      setFormData((prev) => ({
-        ...prev,
-        quantity: 1,
-        location: "",
-        description: "",
-        borrower_id: "",
-        borrower_name: "",
-      }));
     } catch (err) {
-      setMessage({
-        text: "❌ Gagal menyimpan: " + (err.response?.data?.error || err.message),
-        type: "error",
-      });
-      setShowToast(true);
+      showError("Gagal menyimpan: " + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
+  };
+
+  const showError = (msg) => {
+    setModal({
+      show: true,
+      title: "Gagal",
+      message: msg,
+      isSuccess: false,
+    });
   };
 
   return (
@@ -98,10 +119,7 @@ export default function AddTransaction() {
           <i className="fas fa-plus-circle me-2"></i>Tambah Transaksi Inventaris
         </h1>
 
-        {error && <div className="alert alert-danger">{error}</div>}
-
         <form onSubmit={handleSubmit}>
-          {/* Item select */}
           <div className="mb-3">
             <label>Nama Barang</label>
             <select
@@ -120,7 +138,6 @@ export default function AddTransaction() {
             </select>
           </div>
 
-          {/* Quantity input */}
           <div className="mb-3">
             <label>Jumlah</label>
             <input
@@ -145,7 +162,6 @@ export default function AddTransaction() {
             )}
           </div>
 
-          {/* Condition select */}
           <div className="mb-3">
             <label>Kondisi</label>
             <select
@@ -161,7 +177,6 @@ export default function AddTransaction() {
             </select>
           </div>
 
-          {/* Location input */}
           <div className="mb-3">
             <label>Lokasi</label>
             <input
@@ -174,7 +189,6 @@ export default function AddTransaction() {
             />
           </div>
 
-          {/* Description textarea */}
           <div className="mb-3">
             <label>Keterangan</label>
             <textarea
@@ -185,7 +199,6 @@ export default function AddTransaction() {
             />
           </div>
 
-          {/* Borrower type */}
           <div className="mb-3">
             <label>Peminjam</label>
             <select
@@ -200,7 +213,6 @@ export default function AddTransaction() {
             </select>
           </div>
 
-          {/* Conditional input for borrower */}
           {formData.borrower_type === "warga" ? (
             <div className="mb-3">
               <label>Nama Warga</label>
@@ -244,30 +256,15 @@ export default function AddTransaction() {
             )}
           </button>
         </form>
-
-        {/* Toast Message */}
-        {showToast && (
-          <div className="toast-container position-fixed bottom-0 end-0 p-3" style={{ zIndex: 9999 }}>
-            <div
-              className={`toast align-items-center text-white ${
-                message.type === "success" ? "bg-success" : "bg-danger"
-              } border-0 show`}
-              role="alert"
-              aria-live="assertive"
-              aria-atomic="true"
-            >
-              <div className="d-flex">
-                <div className="toast-body">{message.text}</div>
-                <button
-                  type="button"
-                  className="btn-close btn-close-white me-2 m-auto"
-                  onClick={() => setShowToast(false)}
-                ></button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
+
+      <ModalDialog
+        show={modal.show}
+        title={modal.title}
+        message={modal.message}
+        isSuccess={modal.isSuccess}
+        onClose={() => setModal((prev) => ({ ...prev, show: false }))}
+      />
     </AdminLayout>
   );
 }

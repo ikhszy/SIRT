@@ -80,10 +80,10 @@ export default function InventoryList() {
             <i className="fas fa-boxes me-2"></i> Data Inventaris
           </h1>
           <div>
-            <a href="/inventory/add" className="btn btn-success me-2 mb-2">
+            <a href="/inventory/add" className="btn btn-success mb-3">
               <i className="fas fa-plus me-1"></i> Tambah Inventaris
             </a>
-            <a href="/import-inventory" className="btn btn-warning mb-2">
+            <a href="/import-inventory" className="btn btn-primary mb-3 ms-2">
               <i className="fas fa-file-import me-1"></i> Import Inventaris
             </a>
           </div>

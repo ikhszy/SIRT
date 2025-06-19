@@ -4,6 +4,7 @@ import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
 import countries from '../utils/countries';
 import occupations from '../utils/occupations';
+import ModalDialog from '../Components/ModalDialog';
 
 export default function AddResident() {
   const [form, setForm] = useState({
@@ -32,6 +33,7 @@ export default function AddResident() {
   const [households, setHouseholds] = useState([]);
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [modal, setModal] = useState({ show: false, message: '', title: '', isSuccess: true });
   const navigate = useNavigate();
 
   // New: Per-field validation errors
@@ -121,33 +123,51 @@ export default function AddResident() {
     requiredFields.forEach((field) => {
       const value = form[field];
       if (!value || (typeof value === 'string' && value.trim() === '')) {
-        newFieldErrors[field] = 'Harus di isi';
+        newFieldErrors[field] = 'Harus diisi';
       }
     });
+
+    if (
+      form.status === 'tidak aktif - lainnya' &&
+      (!form.status_remarks || form.status_remarks.trim() === '')
+    ) {
+      newFieldErrors.status_remarks = 'Harus diisi untuk status lainnya';
+    }
 
     setFieldErrors(newFieldErrors);
 
     if (Object.keys(newFieldErrors).length > 0) {
-      setFieldErrors(newFieldErrors);
-      setError('Harap isi bagian yang wajib!');
+      setModal({
+        show: true,
+        title: 'Gagal',
+        message: 'Harap isi semua bagian yang wajib diisi!',
+        isSuccess: false,
+      });
       return;
     }
 
-    setError('');
-    setFieldErrors({});
-
     try {
       await api.post('/residents', form);
-      setShowSuccess(true);
+      setModal({
+        show: true,
+        title: 'Sukses',
+        message: 'Data Warga berhasil ditambahkan!',
+        isSuccess: true,
+      });
       setTimeout(() => {
-        setShowSuccess(false);
         navigate('/residents');
       }, 1500);
     } catch (err) {
       const errMsg =
-        err.response?.data?.message || err.message || 'Failed to add resident due to an unknown error';
-      setFieldErrors({ form: errMsg });
-      console.error('Add resident error:', err);
+        err.response?.data?.message ||
+        err.message ||
+        'Gagal menambahkan warga karena kesalahan tidak diketahui';
+      setModal({
+        show: true,
+        title: 'Gagal',
+        message: errMsg,
+        isSuccess: false,
+      });
     }
   };
 
@@ -165,19 +185,6 @@ export default function AddResident() {
         </div>
         <div className="card shadow mb-4">
           <div className="card-body">
-            {showSuccess && (
-              <div className="alert alert-success alert-dismissible fade show" role="alert">
-                Data Warga berhasil ditambahkan!
-              </div>
-            )}
-
-            {/* Show server/form error if any */}
-            {fieldErrors.form && (
-              <div className="alert alert-danger" role="alert">
-                {fieldErrors.form}
-              </div>
-            )}
-
             <form onSubmit={handleSubmit} noValidate>
               {/* Full Name, NIK */}
               <div className="row">
@@ -449,7 +456,7 @@ export default function AddResident() {
               
               {/* Status */}
               <div className="mb-3">
-                <label className="form-label">Domisili</label>
+                <label className="form-label">Status NIK</label>
                 <select
                   name="status"
                   className={inputClass('status')}
@@ -457,13 +464,31 @@ export default function AddResident() {
                   onChange={handleChange}
                 >
                   <option value="">-- Pilih --</option>
-                  <option value="Lokal">Disini/Sekitar</option>
-                  <option value="Asing">Diluar</option>
+                  <option value="Lokal">Aktif</option>
+                  <option value="tidak aktif - meninggal">Tidak Aktif - Meninggal</option>
+                  <option value="tidak aktif - pindah">Tidak Aktif - Pindah</option>
+                  <option value="tidak aktif - lainnya">Tidak Aktif - Lainnya</option>
                 </select>
                 {fieldErrors.status && (
                   <div className="invalid-feedback">{fieldErrors.status}</div>
                 )}
               </div>
+              {/* show status remarks on lainnya option selected */}
+              {form.status === 'tidak aktif - lainnya' && (
+                <div className="mb-3">
+                  <label className="form-label">Alasan Tidak Aktif</label>
+                  <input
+                    name="status_remarks"
+                    className={inputClass('status_remarks')}
+                    value={form.status_remarks}
+                    onChange={handleChange}
+                    autoComplete="off"
+                  />
+                  {fieldErrors.status_remarks && (
+                    <div className="invalid-feedback">{fieldErrors.status_remarks}</div>
+                  )}
+                </div>
+              )}
 
               <button type="submit" className="btn btn-primary">
                 Add Resident
@@ -472,6 +497,13 @@ export default function AddResident() {
           </div>
         </div>
       </div>
+      <ModalDialog
+        show={modal.show}
+        title={modal.title}
+        message={modal.message}
+        isSuccess={modal.isSuccess}
+        onClose={() => setModal(prev => ({ ...prev, show: false }))}
+      />
     </AdminLayout>
   );
 }

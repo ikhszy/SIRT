@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
+import ModalDialog from '../Components/ModalDialog';
 
 export default function EditAddress() {
   const { id } = useParams();
@@ -12,26 +13,29 @@ export default function EditAddress() {
   const [donationHistory, setDonationHistory] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [yearOptions, setYearOptions] = useState([]);
-  const [error, setError] = useState('');
 
-  // Generate 5 year options: 2 years before & after current
+  const [modal, setModal] = useState({
+    show: false,
+    title: '',
+    message: '',
+    isSuccess: true,
+  });
+
   useEffect(() => {
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
     setYearOptions(years);
   }, []);
 
-  // Fetch address data
   useEffect(() => {
     api.get(`/address/${id}`)
       .then(res => setForm(res.data))
       .catch(err => {
         console.error('Failed to load address', err);
-        setError('Gagal memuat data alamat');
+        showError('Gagal memuat data alamat');
       });
   }, [id]);
 
-  // Fetch donation history by selected year
   useEffect(() => {
     if (activeTab === 'history') {
       api.get(`/finance/donations/${id}?year=${selectedYear}`)
@@ -48,11 +52,26 @@ export default function EditAddress() {
     e.preventDefault();
     try {
       await api.put(`/address/${id}`, form);
-      navigate('/addresses');
+      setModal({
+        show: true,
+        title: 'Sukses',
+        message: 'Alamat berhasil diperbarui!',
+        isSuccess: true
+      });
+      setTimeout(() => navigate('/addresses'), 1500);
     } catch (err) {
-      setError('Gagal memperbarui alamat');
       console.error(err);
+      showError('Gagal memperbarui alamat');
     }
+  };
+
+  const showError = (message) => {
+    setModal({
+      show: true,
+      title: 'Error',
+      message,
+      isSuccess: false
+    });
   };
 
   return (
@@ -62,7 +81,6 @@ export default function EditAddress() {
           <i className="fas fa-edit me-2"></i> Ubah Alamat
         </h1>
 
-        {/* Tabs */}
         <div className="mb-3">
           <button
             className={`btn btn-outline-primary me-2 ${activeTab === 'form' ? 'active' : ''}`}
@@ -93,8 +111,6 @@ export default function EditAddress() {
                     required
                   />
                 </div>
-
-                {error && <div className="text-danger mb-3">{error}</div>}
 
                 <button className="btn btn-primary" type="submit">
                   <i className="fas fa-save me-1"></i> Simpan Perubahan
@@ -156,6 +172,14 @@ export default function EditAddress() {
           </div>
         </div>
       </div>
+
+      <ModalDialog
+        show={modal.show}
+        title={modal.title}
+        message={modal.message}
+        isSuccess={modal.isSuccess}
+        onClose={() => setModal(prev => ({ ...prev, show: false }))}
+      />
     </AdminLayout>
   );
 }

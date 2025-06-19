@@ -5,6 +5,7 @@ import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
 import countries from '../utils/countries';
 import occupations from '../utils/occupations';
+import ModalDialog from '../Components/ModalDialog';
 
 export default function EditResident() {
   const { id } = useParams();
@@ -12,6 +13,12 @@ export default function EditResident() {
   const location = useLocation();
   const isViewMode = location.pathname.includes('/view/');
   const [isEditable, setIsEditable] = useState(!isViewMode);
+  const [modal, setModal] = useState({
+    show: false,
+    title: '',
+    message: '',
+    isSuccess: true
+  });
 
   const [form, setForm] = useState({
     full_name: '',
@@ -30,12 +37,19 @@ export default function EditResident() {
     citizenship: 'Indonesia',
     address_id: '',
     status: '',
+    status_remarks:'',
   });
 
   const [households, setHouseholds] = useState([]);
   const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+  if (form.status !== 'tidak aktif - lainnya' && form.status_remarks) {
+    setForm((prev) => ({ ...prev, status_remarks: '' }));
+  }
+}, [form.status]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -100,22 +114,41 @@ export default function EditResident() {
       }
     });
 
+    if (form.status === 'tidak aktif - lainnya' && (!form.status_remarks || form.status_remarks.trim() === '')) {
+      errors.status_remarks = 'Harus diisi untuk status lainnya';
+    }
+
     if (Object.keys(errors).length) {
       setFieldErrors(errors);
-      setError('Harap isi bagian yang wajib!');
+      setModal({
+        show: true,
+        title: 'Gagal',
+        message: 'Harap isi bagian yang wajib!',
+        isSuccess: false
+      });
       return;
     }
 
     try {
       await api.put(`/residents/${id}`, form);
-      setShowSuccess(true);
+      setModal({
+        show: true,
+        title: 'Berhasil',
+        message: '✅ Data warga berhasil diperbarui.',
+        isSuccess: true
+      });
       setTimeout(() => {
-        setShowSuccess(false);
+        setModal(prev => ({ ...prev, show: false }));
         navigate('/residents');
       }, 1500);
     } catch (err) {
       console.error('Update error:', err);
-      setError('Gagal memperbarui data.');
+      setModal({
+        show: true,
+        title: 'Gagal',
+        message: '❌ Gagal memperbarui data.',
+        isSuccess: false
+      });
     }
   };
 
@@ -265,12 +298,29 @@ export default function EditResident() {
               <div className="mb-3">
                 <label>Domisili</label>
                 <select name="status" className={inputClass('status')} value={form.status} onChange={handleChange} disabled={!isEditable}>
-                  <option value="">-- Pilih --</option>
-                  <option value="Lokal">Disini/Sekitar</option>
-                  <option value="Asing">Diluar</option>
+                  <option value="Lokal">Aktif</option>
+                  <option value="tidak aktif - meninggal">Tidak Aktif - Meninggal</option>
+                  <option value="tidak aktif - pindah">Tidak Aktif - Pindah</option>
+                  <option value="tidak aktif - lainnya">Tidak Aktif - Lainnya</option>
                 </select>
                 {fieldErrors.status && <div className="invalid-feedback">{fieldErrors.status}</div>}
               </div>
+
+              {form.status === 'tidak aktif - lainnya' && (
+                <div className="mb-3">
+                  <label>Alasan Tidak Aktif</label>
+                  <input
+                    name="status_remarks"
+                    className={inputClass('status_remarks')}
+                    value={form.status_remarks}
+                    onChange={handleChange}
+                    disabled={!isEditable}
+                  />
+                  {fieldErrors.status_remarks && (
+                    <div className="invalid-feedback">{fieldErrors.status_remarks}</div>
+                  )}
+                </div>
+              )}
 
               <button type="submit" className="btn btn-primary" disabled={!isEditable}>Simpan Perubahan</button>
               <button type="button" className="btn btn-secondary ms-2" onClick={() => navigate('/residents')}>Kembali</button>
@@ -278,6 +328,13 @@ export default function EditResident() {
           </div>
         </div>
       </div>
+      <ModalDialog
+        show={modal.show}
+        title={modal.title}
+        message={modal.message}
+        isSuccess={modal.isSuccess}
+        onClose={() => setModal(prev => ({ ...prev, show: false }))}
+      />
     </AdminLayout>
   );
 }

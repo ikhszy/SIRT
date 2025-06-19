@@ -108,7 +108,7 @@ export default function IntroLetterPage() {
                   <th>Keperluan</th>
                   <th>Status</th>
                   <th>Tanggal</th>
-                  <th>Aksi</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -121,9 +121,11 @@ export default function IntroLetterPage() {
                       <td>{letter.letterStatus}</td>
                       <td>{new Date(letter.date_created).toLocaleDateString('id-ID')}</td>
                       <td>
-                        <Button size="sm" onClick={() => navigate(`/surat/${letter.id}`)}>
-                          Lihat
-                        </Button>
+                        <Button
+                            className="btn btn-sm"
+                            onClick={() => navigate(`/surat/${letter.id}`)}>
+                            <i class="fa-solid fa-eye"></i>
+                          </Button>
                       </td>
                     </tr>
                   ))

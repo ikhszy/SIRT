@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AdminLayout from '../layouts/AdminLayout';
+import ModalDialog from '../Components/ModalDialog';
 
 export default function EditUser() {
   const { id } = useParams();
@@ -11,9 +12,14 @@ export default function EditUser() {
     password: '',
     role: ''
   });
-  const [error, setError] = useState('');
 
-  // Helper to get token
+  const [modal, setModal] = useState({
+    show: false,
+    title: '',
+    message: '',
+    isSuccess: true
+  });
+
   const token = localStorage.getItem('token');
 
   useEffect(() => {
@@ -26,13 +32,16 @@ export default function EditUser() {
         role: res.data.role || ''
       })))
       .catch(err => {
-        if (err.response?.status === 404) {
-          setError('Pengguna tidak ditemukan');
-        } else if (err.response?.status === 401) {
-          setError('Unauthorized. Silakan login kembali.');
-        } else {
-          setError('Gagal mengambil data pengguna');
-        }
+        let msg = 'Gagal mengambil data pengguna';
+        if (err.response?.status === 404) msg = 'Pengguna tidak ditemukan';
+        else if (err.response?.status === 401) msg = 'Unauthorized. Silakan login kembali.';
+
+        setModal({
+          show: true,
+          title: 'Error',
+          message: msg,
+          isSuccess: false
+        });
       });
   }, [id, token]);
 
@@ -45,7 +54,6 @@ export default function EditUser() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
 
     const payload = {
       username: formData.username,
@@ -60,9 +68,25 @@ export default function EditUser() {
       await axios.put(`/api/users/${id}`, payload, {
         headers: { Authorization: token }
       });
-      navigate('/users');
+
+      setModal({
+        show: true,
+        title: 'Berhasil',
+        message: '✅ Data pengguna berhasil diperbarui.',
+        isSuccess: true
+      });
+
+      setTimeout(() => {
+        setModal(prev => ({ ...prev, show: false }));
+        navigate('/users');
+      }, 1500);
     } catch (err) {
-      setError(err.response?.data?.error || 'Gagal memperbarui pengguna');
+      setModal({
+        show: true,
+        title: 'Gagal',
+        message: err.response?.data?.error || '❌ Gagal memperbarui pengguna',
+        isSuccess: false
+      });
     }
   };
 
@@ -70,7 +94,6 @@ export default function EditUser() {
     <AdminLayout>
       <div className="card p-4">
         <h3 className="mb-3">Edit Pengguna</h3>
-        {error && <div className="alert alert-danger">{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
@@ -109,6 +132,14 @@ export default function EditUser() {
           <button type="submit" className="btn btn-primary">Update</button>
         </form>
       </div>
+
+      <ModalDialog
+        show={modal.show}
+        title={modal.title}
+        message={modal.message}
+        isSuccess={modal.isSuccess}
+        onClose={() => setModal(prev => ({ ...prev, show: false }))}
+      />
     </AdminLayout>
   );
 }

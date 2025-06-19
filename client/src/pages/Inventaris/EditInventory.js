@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AdminLayout from '../../layouts/AdminLayout';
 import api from '../../api';
+import ModalDialog from '../../Components/ModalDialog';
 
 export default function EditInventory() {
   const { id } = useParams();
@@ -14,7 +15,13 @@ export default function EditInventory() {
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+
+  const [modal, setModal] = useState({
+    show: false,
+    title: '',
+    message: '',
+    isSuccess: true
+  });
 
   useEffect(() => {
     async function fetchInventory() {
@@ -29,7 +36,12 @@ export default function EditInventory() {
         setLoading(false);
       } catch (err) {
         console.error('Failed to fetch inventory:', err);
-        setError('Gagal memuat data inventaris.');
+        setModal({
+          show: true,
+          title: 'Gagal Memuat',
+          message: 'Gagal memuat data inventaris.',
+          isSuccess: false
+        });
         setLoading(false);
       }
     }
@@ -38,19 +50,15 @@ export default function EditInventory() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
 
     if (!name.trim()) {
-      setError('Nama barang wajib diisi.');
-      return;
+      return showError('Nama barang wajib diisi.');
     }
     if (!quantity || isNaN(quantity) || quantity <= 0) {
-      setError('Jumlah harus berupa angka lebih besar dari 0.');
-      return;
+      return showError('Jumlah harus berupa angka lebih besar dari 0.');
     }
     if (!location.trim()) {
-      setError('Lokasi wajib diisi.');
-      return;
+      return showError('Lokasi wajib diisi.');
     }
 
     setSaving(true);
@@ -62,12 +70,32 @@ export default function EditInventory() {
         location: location.trim(),
         description: description.trim() || null,
       });
-      navigate('/inventory');
+
+      setModal({
+        show: true,
+        title: 'Berhasil',
+        message: '✅ Inventaris berhasil diperbarui.',
+        isSuccess: true
+      });
+
+      setTimeout(() => {
+        setModal((prev) => ({ ...prev, show: false }));
+        navigate('/inventory');
+      }, 1500);
     } catch (err) {
       console.error('Failed to update inventory:', err);
-      setError('Gagal memperbarui inventaris. Silakan coba lagi.');
+      showError('Gagal memperbarui inventaris. Silakan coba lagi.');
       setSaving(false);
     }
+  };
+
+  const showError = (msg) => {
+    setModal({
+      show: true,
+      title: 'Gagal',
+      message: msg,
+      isSuccess: false
+    });
   };
 
   if (loading) {
@@ -89,12 +117,6 @@ export default function EditInventory() {
 
         <div className="card shadow mb-4">
           <div className="card-body">
-            {error && (
-              <div className="alert alert-danger">
-                {error}
-              </div>
-            )}
-
             <form onSubmit={handleSubmit}>
               <div className="mb-3">
                 <label className="form-label">Nama Barang</label>
@@ -179,6 +201,14 @@ export default function EditInventory() {
           </div>
         </div>
       </div>
+
+      <ModalDialog
+        show={modal.show}
+        title={modal.title}
+        message={modal.message}
+        isSuccess={modal.isSuccess}
+        onClose={() => setModal((prev) => ({ ...prev, show: false }))}
+      />
     </AdminLayout>
   );
 }

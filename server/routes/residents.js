@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require('../db/db.js');
 const authMiddleware = require('../middleware/authMiddleware');
 
-// GET all residents
+// GET all residents with server-side filtering
 router.get("/", authMiddleware, async (req, res) => {
   try {
     if (req.query.lookup === 'true') {
@@ -12,16 +12,65 @@ router.get("/", authMiddleware, async (req, res) => {
       return res.json(rows);
     }
 
+    const {
+      full_name = '', nik = '', kk_number = '', gender = '', birthplace = '',
+      education = '', occupation = '', full_address = '', status = ''
+    } = req.query;
+
+    const filters = [];
+    const params = [];
+
+    if (full_name) {
+      filters.push(`r.full_name LIKE ?`);
+      params.push(`%${full_name}%`);
+    }
+    if (nik) {
+      filters.push(`r.nik LIKE ?`);
+      params.push(`%${nik}%`);
+    }
+    if (kk_number) {
+      filters.push(`r.kk_number LIKE ?`);
+      params.push(`%${kk_number}%`);
+    }
+    if (gender) {
+      filters.push(`r.gender LIKE ?`);
+      params.push(`%${gender}%`);
+    }
+    if (birthplace) {
+      filters.push(`r.birthplace LIKE ?`);
+      params.push(`%${birthplace}%`);
+    }
+    if (education) {
+      filters.push(`r.education LIKE ?`);
+      params.push(`%${education}%`);
+    }
+    if (occupation) {
+      filters.push(`r.occupation LIKE ?`);
+      params.push(`%${occupation}%`);
+    }
+    if (status) {
+      filters.push(`r.status = ?`);
+      params.push(status);
+    }
+    if (full_address) {
+      filters.push(`a.full_address LIKE ?`);
+      params.push(`%${full_address}%`);
+    }
+
+    const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
+
     const sql = `
       SELECT r.*, a.full_address
       FROM residents r
       LEFT JOIN address a ON r.address_id = a.id
       LEFT JOIN households h ON r.kk_number = h.kk_number
+      ${whereClause}
     `;
-    const rows = await db.all(sql);
+
+    const rows = await db.all(sql, params);
     res.json(rows);
   } catch (err) {
-    console.error('GET residents failed:', err);
+    console.error("GET residents with filters failed:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -68,22 +117,25 @@ router.post("/", authMiddleware, async (req, res) => {
     const {
       full_name, nik, kk_number, gender, birthplace, birthdate,
       age, blood_type, religion, marital_status, relationship,
-      education, occupation, citizenship, status, address_id
+      education, occupation, citizenship, status, address_id,
+      status_remarks // 🆕
     } = req.body;
 
     const sql = `
       INSERT INTO residents (
         full_name, nik, kk_number, gender, birthplace, birthdate,
         age, blood_type, religion, marital_status, relationship,
-        education, occupation, citizenship, status, address_id
+        education, occupation, citizenship, status, address_id,
+        status_remarks
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const result = await db.run(sql, [
       full_name, nik, kk_number, gender, birthplace, birthdate,
       age, blood_type, religion, marital_status, relationship,
-      education, occupation, citizenship, status, address_id
+      education, occupation, citizenship, status, address_id,
+      status_remarks // 🆕
     ]);
 
     res.json({ success: true, id: result.lastID });
@@ -99,14 +151,15 @@ router.put("/:id", authMiddleware, async (req, res) => {
     const {
       full_name, nik, kk_number, gender, birthplace, birthdate,
       age, blood_type, religion, marital_status, relationship,
-      education, occupation, citizenship, status, address_id
+      education, occupation, citizenship, status, address_id,
+      status_remarks // 🆕
     } = req.body;
 
     const sql = `
       UPDATE residents SET
         full_name = ?, nik = ?, kk_number = ?, gender = ?, birthplace = ?, birthdate = ?,
         age = ?, blood_type = ?, religion = ?, marital_status = ?, relationship = ?, education = ?,
-        occupation = ?, citizenship = ?, status = ?, address_id = ?
+        occupation = ?, citizenship = ?, status = ?, address_id = ?, status_remarks = ?
       WHERE id = ?
     `;
 
@@ -114,6 +167,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
       full_name, nik, kk_number, gender, birthplace, birthdate,
       age, blood_type, religion, marital_status, relationship,
       education, occupation, citizenship, status, address_id,
+      status_remarks, // 🆕
       req.params.id
     ]);
 

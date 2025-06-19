@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../layouts/AdminLayout';
 import api from '../../api';
+import ModalDialog from '../../Components/ModalDialog';
 
 export default function AddInventory() {
   const [name, setName] = useState('');
@@ -9,29 +10,49 @@ export default function AddInventory() {
   const [condition, setCondition] = useState('baik');
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
-  const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const [modal, setModal] = useState({
+    show: false,
+    title: '',
+    message: '',
+    isSuccess: true
+  });
 
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
 
     if (!name.trim()) {
-      setError('Nama barang wajib diisi.');
-      return;
+      return setModal({
+        show: true,
+        title: 'Validasi Gagal',
+        message: 'Nama barang wajib diisi.',
+        isSuccess: false
+      });
     }
+
     if (!quantity || isNaN(quantity) || quantity <= 0) {
-      setError('Jumlah harus berupa angka lebih besar dari 0.');
-      return;
+      return setModal({
+        show: true,
+        title: 'Validasi Gagal',
+        message: 'Jumlah harus berupa angka lebih besar dari 0.',
+        isSuccess: false
+      });
     }
+
     if (!location.trim()) {
-      setError('Lokasi wajib diisi.');
-      return;
+      return setModal({
+        show: true,
+        title: 'Validasi Gagal',
+        message: 'Lokasi wajib diisi.',
+        isSuccess: false
+      });
     }
 
     setSaving(true);
+
     try {
       await api.post('/inventory', {
         name: name.trim(),
@@ -40,10 +61,25 @@ export default function AddInventory() {
         location: location.trim(),
         description: description.trim() || null,
       });
-      navigate('/inventory');
+
+      setModal({
+        show: true,
+        title: 'Sukses',
+        message: 'Inventaris berhasil ditambahkan!',
+        isSuccess: true
+      });
+
+      setTimeout(() => {
+        navigate('/inventory');
+      }, 1500);
     } catch (err) {
       console.error('Failed to add inventory:', err);
-      setError('Gagal menambahkan inventaris. Silakan coba lagi.');
+      setModal({
+        show: true,
+        title: 'Gagal',
+        message: 'Gagal menambahkan inventaris. Silakan coba lagi.',
+        isSuccess: false
+      });
       setSaving(false);
     }
   };
@@ -57,8 +93,6 @@ export default function AddInventory() {
 
         <div className="card shadow mb-4">
           <div className="card-body">
-            {error && <div className="alert alert-danger">{error}</div>}
-
             <form onSubmit={handleSubmit}>
               <div className="mb-3">
                 <label className="form-label">Nama Barang</label>
@@ -138,6 +172,14 @@ export default function AddInventory() {
           </div>
         </div>
       </div>
+
+      <ModalDialog
+        show={modal.show}
+        title={modal.title}
+        message={modal.message}
+        isSuccess={modal.isSuccess}
+        onClose={() => setModal((prev) => ({ ...prev, show: false }))}
+      />
     </AdminLayout>
   );
 }

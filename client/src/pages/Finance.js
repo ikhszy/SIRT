@@ -49,7 +49,7 @@ export default function Finance() {
       <div className="container-fluid px-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h1 className="h3 text-gray-800">
-            <i className="fas fa-wallet me-2"></i> Keuangan Warga
+            <i className="fas fa-wallet me-2"></i> Keuangan RT
           </h1>
             <div>
               <a href="/finance/add" className="btn btn-success mb-3">

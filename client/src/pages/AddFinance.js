@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import AdminLayout from '../layouts/AdminLayout';
 import { useNavigate } from 'react-router-dom';
+import ModalDialog from '../Components/ModalDialog';
 
 const AddFinance = () => {
   const [formData, setFormData] = useState({
@@ -17,7 +18,7 @@ const AddFinance = () => {
   const [address, setAddress] = useState([]);
   const [perMonthAmount, setPerMonthAmount] = useState('');
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
+  const [modal, setModal] = useState({ show: false, message: '', title: '', isSuccess: true });
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
 
@@ -36,7 +37,6 @@ const AddFinance = () => {
   }, [token]);
 
   useEffect(() => {
-    // Auto-fill nominal if 'Iuran' is selected
     if (formData.kategori === 'Pendapatan' && formData.jenisPendapatan === 'Iuran') {
       setFormData(prev => ({ ...prev, nominal: perMonthAmount }));
     }
@@ -50,31 +50,43 @@ const AddFinance = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
+
     try {
       const payload = {
         transactionDate: formData.tanggal,
         transactionAmount: Number(formData.nominal),
         remarks: formData.keterangan,
         addressId: formData.jenisPendapatan === 'Iuran' ? formData.addressId : null,
-        residentId: null, // or get from somewhere if needed
+        residentId: null,
         months: formData.jenisPendapatan === 'Iuran' && formData.bulan ? [formData.bulan] : [],
       };
 
       await axios.post('/api/finance/income', payload, {
-        headers: {
-          Authorization: token,
-        },
+        headers: { Authorization: token },
       });
 
-      navigate('/finance');
+      setModal({
+        show: true,
+        title: 'Sukses',
+        message: 'Data transaksi berhasil ditambahkan!',
+        isSuccess: true
+      });
+
+      setTimeout(() => {
+        navigate('/finance');
+      }, 1500);
     } catch (err) {
       console.error(err);
-      setMessage('❌ Gagal menambahkan data.');
+      setModal({
+        show: true,
+        title: 'Gagal',
+        message: '❌ Gagal menambahkan data.',
+        isSuccess: false
+      });
     } finally {
       setSaving(false);
     }
   };
-
 
   return (
     <AdminLayout>
@@ -152,11 +164,18 @@ const AddFinance = () => {
               <button type="submit" className="btn btn-primary" disabled={saving}>
                 {saving ? 'Menyimpan...' : 'Simpan'}
               </button>
-              {message && <p className="mt-3 text-muted">{message}</p>}
             </form>
           </div>
         </div>
       </div>
+
+      <ModalDialog
+        show={modal.show}
+        title={modal.title}
+        message={modal.message}
+        isSuccess={modal.isSuccess}
+        onClose={() => setModal((prev) => ({ ...prev, show: false }))}
+      />
     </AdminLayout>
   );
 };

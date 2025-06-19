@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import AdminLayout from '../layouts/AdminLayout';
+import ModalDialog from '../Components/ModalDialog';
 
 const EditFinance = () => {
   const { id, type } = useParams();
   const navigate = useNavigate();
+
   let rawToken = localStorage.getItem('token');
-  if (rawToken?.startsWith('Bearer ')) {
-    rawToken = rawToken.replace('Bearer ', '');
-  }
+  if (rawToken?.startsWith('Bearer ')) rawToken = rawToken.replace('Bearer ', '');
   const token = `Bearer ${rawToken}`;
 
   const [formData, setFormData] = useState({
@@ -26,10 +26,15 @@ const EditFinance = () => {
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
+
+  const [modal, setModal] = useState({
+    show: false,
+    title: '',
+    message: '',
+    isSuccess: true,
+  });
 
   useEffect(() => {
-    // Fetch finance record by ID
     axios.get(`/api/finance/${type}/${id}`, { headers: { Authorization: token } })
       .then(res => {
         if (res.data) {
@@ -40,7 +45,7 @@ const EditFinance = () => {
             nominal: data.transactionAmount || '',
             keterangan: data.remarks || '',
             jenisPendapatan: data.addressId ? 'Iuran' : 'Lainnya',
-            bulan: '', // Optional: set if needed from donation history
+            bulan: '',
             addressId: data.addressId || '',
           });
         }
@@ -48,10 +53,9 @@ const EditFinance = () => {
       .catch(err => {
         console.error("❌ Error fetching finance data:", err?.response);
         if (err.response?.status === 401) navigate('/login');
-        else navigate('/dashboard'); // fallback redirect
+        else navigate('/dashboard');
       });
 
-    // Fetch settings (perMonthAmount)
     axios.get('/api/settings', { headers: { Authorization: token } })
       .then(res => {
         if (res.data.perMonthAmount) {
@@ -59,7 +63,6 @@ const EditFinance = () => {
         }
       });
 
-    // Fetch addresses
     axios.get('/api/address', { headers: { Authorization: token } })
       .then(res => {
         setAddresses(res.data);
@@ -85,10 +88,23 @@ const EditFinance = () => {
       await axios.put(`/api/finance/${type}/${id}`, formData, {
         headers: { Authorization: token },
       });
-      navigate('/keuangan');
+
+      setModal({
+        show: true,
+        title: 'Berhasil',
+        message: '✅ Data berhasil diperbarui.',
+        isSuccess: true,
+      });
+
+      setTimeout(() => navigate('/finance'), 1200);
     } catch (err) {
       console.error("❌ Error saving finance data:", err?.response);
-      setMessage('❌ Gagal memperbarui data.');
+      setModal({
+        show: true,
+        title: 'Gagal',
+        message: '❌ Gagal memperbarui data.',
+        isSuccess: false,
+      });
     } finally {
       setSaving(false);
     }
@@ -172,11 +188,18 @@ const EditFinance = () => {
               <button type="submit" className="btn btn-primary" disabled={saving}>
                 {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
               </button>
-              {message && <p className="mt-3 text-muted">{message}</p>}
             </form>
           </div>
         </div>
       </div>
+
+      <ModalDialog
+        show={modal.show}
+        title={modal.title}
+        message={modal.message}
+        isSuccess={modal.isSuccess}
+        onClose={() => setModal(prev => ({ ...prev, show: false }))}
+      />
     </AdminLayout>
   );
 };

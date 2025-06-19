@@ -124,7 +124,8 @@ function extractFields(row, forDisplay = false) {
     occupation: (row["Pekerjaan"] || "").toString().trim(),
     citizenship: (row["Kewarganegaraan"] || "").toString().trim(),
     address_text: (row["Alamat"] || "").toString().trim(),
-    status: (row["Domisili"] || "").toString().trim(),
+    status: (row["Status NIK"] || "").toString().trim(),
+    status_remarks: (row["Alasan tidak aktif"] || "").toString().trim(),
   };
 }
 
@@ -166,7 +167,11 @@ router.post("/preview", upload.single("file"), (req, res) => {
       } else if (!addrRow) {
         errors.push({ row: rowNumber, message: `Address not found: ${data.address_text}` });
       } else {
-        preview.push({ ...data, address_id: addrRow.id });
+        preview.push({
+          ...data,
+          address_id: addrRow.id,
+          status_remarks: data.status === "tidak aktif - lainnya" ? data.status_remarks : "",
+        });
       }
 
       if (++completed === rows.length) cleanup(db, filePath, res, { success: true, data: preview, errors });
@@ -201,27 +206,31 @@ router.post("/bulk", upload.single("file"), async (req, res) => {
       const data = extractFields(row, false); // raw format for DB
 
       if (!data.full_name || !data.nik || !data.kk_number || !data.address_text) {
-        errors.push({ row: rowNumber, message: "Missing required fields (Nama Lengkap, NIK, KK, Alamat)" });
+        errors.push({ row: rowNumber, message: "Mohon isi data wajib (Nama Lengkap, NIK, KK, Alamat)" });
+        return resolve();
+      }
+      if (data.status === "tidak aktif - lainnya" && !data.status_remarks) {
+        errors.push({ row: rowNumber, message: "Alasan tidak aktif wajib diisi untuk status 'tidak aktif - lainnya'." });
         return resolve();
       }
 
       db.get("SELECT id FROM residents WHERE nik = ?", [data.nik], (err, existing) => {
         if (err) {
-          errors.push({ row: rowNumber, message: "Database error checking NIK." });
+          errors.push({ row: rowNumber, message: "Database error ketika periksa NIK. Hubungi developer" });
           return resolve();
         }
         if (existing) {
-          errors.push({ row: rowNumber, message: "Duplicate NIK, already exists." });
+          errors.push({ row: rowNumber, message: "NIK sudah terdaftar. Periksa kembali" });
           return resolve();
         }
 
         db.get("SELECT id FROM address WHERE full_address = ?", [data.address_text], (err, addr) => {
           if (err) {
-            errors.push({ row: rowNumber, message: "Database error during address lookup." });
+            errors.push({ row: rowNumber, message: "Database error ketika periksa Alamat. Hubungi developer" });
             return resolve();
           }
           if (!addr || !addr.id) {
-            errors.push({ row: rowNumber, message: `Address not found: ${data.address_text}` });
+            errors.push({ row: rowNumber, message: `Alamat tidak ditemukan: ${data.address_text}` });
             return resolve();
           }
 
@@ -229,15 +238,18 @@ router.post("/bulk", upload.single("file"), async (req, res) => {
             INSERT INTO residents (
               full_name, nik, kk_number, gender, birthplace, birthdate,
               blood_type, religion, marital_status, relationship,
-              education, occupation, citizenship, address_id, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              education, occupation, citizenship, address_id, status, status_remarks
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `;
+
 
           const values = [
             data.full_name, data.nik, data.kk_number, data.gender, data.birthplace, data.birthdate,
             data.blood_type, data.religion, data.marital_status, data.relationship,
-            data.education, data.occupation, data.citizenship, addr.id, data.status
+            data.education, data.occupation, data.citizenship, addr.id, data.status,
+            data.status === "tidak aktif - lainnya" ? data.status_remarks : null
           ];
+
 
           db.run(query, values, function (err) {
             if (err) {

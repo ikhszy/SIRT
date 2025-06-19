@@ -39,11 +39,11 @@ export default function AdminLayout({ children }) {
         }}
       >
         <div className="sidebar-heading text-center py-4 fs-5 fw-bold border-bottom w-100">
-          <i className="fa-solid fa-quote-left"></i> {!isSidebarCollapsed ? 'RT Admin' : 'RT'} <i className="fa-solid fa-quote-right"></i>
+          <i className="fa-solid fa-quote-left"></i> {!isSidebarCollapsed ? 'RT Admin' : ''}
         </div>
 
         <div className="list-group list-group-flush w-100">
-          <Link to="/" className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center">
+          <Link to="/dashboard" className="list-group-item list-group-item-action bg-primary text-white d-flex align-items-center">
             <i className="fas fa-tachometer-alt"></i>
             {menuLabel('Dashboard')}
           </Link>

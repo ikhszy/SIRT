@@ -54,11 +54,11 @@ export default function Households() {
             <i className="fas fa-home me-2"></i> Kartu Keluarga
           </h1>
           <div>
-            <a href="/households/add" className="btn btn-success">
+            <a href="/households/add" className="btn btn-success mb-3">
               <i className="fas fa-plus"></i> Tambah Kartu Keluarga
             </a>
             <button
-              className="btn btn-warning"
+              className="btn btn-primary mb-3 ms-2"
               onClick={() => navigate("/households/import")}
             >
               <i className="fas fa-file-import"></i> Import Kartu Keluarga

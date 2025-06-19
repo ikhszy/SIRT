@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
 import Select from 'react-select';
+import ModalDialog from '../Components/ModalDialog';
 
 export default function EditHousehold() {
   const { kk_number } = useParams();
@@ -14,7 +15,13 @@ export default function EditHousehold() {
   });
   const [addresses, setAddresses] = useState([]);
   const [kkOptions, setKkOptions] = useState([]);
-  const [error, setError] = useState('');
+  const [modal, setModal] = useState({
+    show: false,
+    title: '',
+    message: '',
+    isSuccess: true
+  });
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -45,7 +52,12 @@ export default function EditHousehold() {
         setKkOptions(options);
       } catch (err) {
         console.error('Failed to load data:', err);
-        setError('Gagal memuat data.');
+        setModal({
+          show: true,
+          title: 'Gagal',
+          message: 'Gagal memuat data.',
+          isSuccess: false
+        });
       }
     };
 
@@ -62,10 +74,14 @@ export default function EditHousehold() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
 
     if (form.status_kepemilikan_rumah === 'borrowed' && !form.borrowed_from_kk) {
-      setError('Silakan isi nomor KK pemilik rumah jika status adalah "Menumpang".');
+      setModal({
+        show: true,
+        title: 'Gagal',
+        message: 'Silakan isi nomor KK pemilik rumah jika status adalah "Menumpang".',
+        isSuccess: false
+      });
       return;
     }
 
@@ -76,10 +92,23 @@ export default function EditHousehold() {
       };
 
       await api.put(`/households/${kk_number}`, payload);
-      navigate('/households');
+
+      setModal({
+        show: true,
+        title: 'Berhasil',
+        message: '✅ Data KK berhasil diperbarui.',
+        isSuccess: true
+      });
+
+      setTimeout(() => navigate('/households'), 1200);
     } catch (err) {
       console.error(err);
-      setError('Gagal memperbarui data KK.');
+      setModal({
+        show: true,
+        title: 'Gagal',
+        message: '❌ Gagal memperbarui data KK.',
+        isSuccess: false
+      });
     }
   };
 
@@ -142,7 +171,7 @@ export default function EditHousehold() {
                   <option value="">-- Pilih Status Kepemilikan --</option>
                   <option value="pemilik">Pemilik</option>
                   <option value="sewa">Kontrak / Sewa</option>
-                  <option value="numpang_kk">Menumpang</option>
+                  <option value="borrowed">Menumpang</option>
                   <option value="kost">Kost</option>
                 </select>
               </div>
@@ -165,8 +194,6 @@ export default function EditHousehold() {
                 </div>
               )}
 
-              {error && <div className="text-danger mb-3">{error}</div>}
-
               <button type="submit" className="btn btn-primary">
                 <i className="fas fa-save me-1"></i> Simpan
               </button>
@@ -174,6 +201,14 @@ export default function EditHousehold() {
           </div>
         </div>
       </div>
+
+      <ModalDialog
+        show={modal.show}
+        title={modal.title}
+        message={modal.message}
+        isSuccess={modal.isSuccess}
+        onClose={() => setModal(prev => ({ ...prev, show: false }))}
+      />
     </AdminLayout>
   );
 }

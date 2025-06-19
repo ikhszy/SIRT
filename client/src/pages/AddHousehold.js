@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
+import ModalDialog from '../Components/ModalDialog';
 
 export default function AddHousehold() {
   const [form, setForm] = useState({
@@ -12,9 +13,10 @@ export default function AddHousehold() {
     status_kepemilikan_rumah: '',
     borrowed_from_kk: ''
   });
+
   const [addresses, setAddresses] = useState([]);
   const [kkOptions, setKKOptions] = useState([]);
-  const [error, setError] = useState('');
+  const [modal, setModal] = useState({ show: false, message: '', title: '', isSuccess: true });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -30,18 +32,19 @@ export default function AddHousehold() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: value
-    }));
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
 
     if (form.status_kepemilikan_rumah === 'borrowed' && !form.borrowed_from_kk) {
-      setError('Silakan isi nomor KK pemilik rumah jika status adalah "Menumpang".');
+      setModal({
+        show: true,
+        title: 'Gagal',
+        message: 'Silakan isi nomor KK pemilik rumah jika status adalah "Menumpang".',
+        isSuccess: false
+      });
       return;
     }
 
@@ -52,10 +55,24 @@ export default function AddHousehold() {
       };
 
       await api.post('/households', payload);
-      navigate('/households');
+      setModal({
+        show: true,
+        title: 'Sukses',
+        message: 'Kartu Keluarga berhasil ditambahkan!',
+        isSuccess: true
+      });
+
+      setTimeout(() => {
+        navigate('/households');
+      }, 1500);
     } catch (err) {
-      setError('Gagal menambahkan kartu keluarga.');
       console.error(err);
+      setModal({
+        show: true,
+        title: 'Gagal',
+        message: 'Gagal menambahkan kartu keluarga.',
+        isSuccess: false
+      });
     }
   };
 
@@ -124,7 +141,7 @@ export default function AddHousehold() {
                   <option value="">-- Pilih Status Kepemilikan --</option>
                   <option value="pemilik">Pemilik</option>
                   <option value="sewa">Kontrak / Sewa</option>
-                  <option value="numpang_kk">Menumpang KK</option>
+                  <option value="borrowed">Menumpang KK</option>
                   <option value="kost">Kost</option>
                 </select>
               </div>
@@ -149,8 +166,6 @@ export default function AddHousehold() {
                 </div>
               )}
 
-              {error && <div className="text-danger mb-3">{error}</div>}
-
               <button className="btn btn-primary" type="submit">
                 <i className="fas fa-save me-1"></i> Simpan Kartu Keluarga
               </button>
@@ -158,8 +173,14 @@ export default function AddHousehold() {
           </div>
         </div>
       </div>
+
+      <ModalDialog
+        show={modal.show}
+        title={modal.title}
+        message={modal.message}
+        isSuccess={modal.isSuccess}
+        onClose={() => setModal(prev => ({ ...prev, show: false }))}
+      />
     </AdminLayout>
   );
 }
-
-// add comment
