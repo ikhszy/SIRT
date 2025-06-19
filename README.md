@@ -34,9 +34,7 @@ Yes, it’s made for **real-world RT/RW** operations, but with the smoothness of
 - ✅ Bulk Import (Excel-style) for addresses and finance reports
 - ✅ Finance tracking with PDF export
 - ✅ Surat Pengantar generation (with print support!)
-- ✅ User management with roles (future-ready)
-- ✅ Common Settings editor
-- ✅ Protected routes with JWT
+- ✅ Inventory menu (Track the movement of your RT items 🧹)
 
 ---
 
@@ -46,7 +44,6 @@ Yes, it’s made for **real-world RT/RW** operations, but with the smoothness of
 - [ ] Language switcher (Bahasa ↔ English) 🌍
 - [ ] Tooltips to guide new users 🧭
 - [ ] Help/FAQ menu for less techy folks 💡
-- [ ] Inventory menu (Track the movement of your RT items 🧹)
 
 ---
 
