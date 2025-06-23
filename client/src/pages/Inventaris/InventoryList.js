@@ -156,7 +156,7 @@ export default function InventoryList() {
                         <th>Lokasi</th>
                         <th>Deskripsi</th>
                         <th>Terakhir Diperbarui</th>
-                        <th>Aksi</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>

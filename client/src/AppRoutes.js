@@ -18,7 +18,7 @@ import ResidentReport from './pages/ResidentReport';
 import AddressBulkImport from './pages/AddressBulkImport';
 import BulkImportHouseholds from './pages/BulkImportHouseholds';
 import BulkImportAddress from './pages/AddressBulkImport';
-import Finance from './pages/Finance';
+import Finance from './pages/Finance/FinanceTabs';
 import AddFinance from './pages/AddFinance';
 import EditFinance from './pages/EditFinance';
 import FinanceReport from './pages/FinanceReport';
@@ -45,13 +45,17 @@ const AppRoutes = () => {
   const token = localStorage.getItem("token");
 
   useEffect(() => {
-    if (!token && location.pathname !== '/login') {
+    const rawToken = localStorage.getItem("token");
+    const validToken = rawToken && rawToken.length > 10; // crude check
+
+    if (!validToken && location.pathname !== '/login') {
       navigate('/login', { replace: true });
     }
-    if (token) {
+
+    if (validToken) {
       startInactivityWatcher();
     }
-  }, [location, token, navigate]);
+  }, [location.pathname]);
 
   return (
     <Routes>

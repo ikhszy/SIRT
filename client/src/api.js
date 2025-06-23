@@ -21,9 +21,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 403) {
-      localStorage.removeItem("token");
-      alert("Sesi Anda telah berakhir. Silakan login kembali.");
-      window.location.href = "/login?expired=true";
+          console.warn("403 response received:", error.response);
     }
 
     return Promise.reject(error);

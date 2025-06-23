@@ -1,62 +1,90 @@
-import AdminLayout from '../layouts/AdminLayout';
 import React, { useEffect, useState } from 'react';
-import AgeGroupBarChart from "./AgeGroupBarChart";
-import axios from "axios";
+import { Row, Col, Card, Spinner } from 'react-bootstrap';
+import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,   // This is the important part
-  BarElement,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-);
+// Components
+import TotalResidentsCard from '../Components/TotalResidentsCard';
+import DemografiWargaCard from '../Components/DemografiWargaCard';
+import KepemilikanRumahChart from '../Components/KepemilikanRumah';
+import GenderPieChart from '../Components/GenderPieChart';
+import MaritalStatusPieChart from '../Components/MaritalStatusPieChart';
+import KeuanganOverviewCard from '../Components/KeuanganOverviewCard';
 
 export default function Dashboard() {
   const [residents, setResidents] = useState([]);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchResidents() {
-      try {
-        const token = localStorage.getItem('token');
-        const res = await api.get('/residents', { 
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setResidents(res.data);
-      } catch (err) {
-        console.error('Failed to fetch residents:', err);
-        setError('Failed to load residents data.');
-      }
-    }
-
-    fetchResidents();
+    api.get('/residents')
+      .then(res => setResidents(res.data))
+      .catch(err => console.error('Failed to fetch residents:', err))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
     <AdminLayout>
-      <h1 className="h3 text-gray-800">
-        <i className="fas fa-tachometer-alt"></i> DASHBOARD
-      </h1>
-      <p>Selamat datang di aplikasi warga!</p>
+      <div className="container-fluid px-4">
+        <h1 className="h3 mb-4 text-gray-800">
+          <i className="fas fa-tachometer-alt me-2" /> Dashboard
+        </h1>
 
-      <div>
-        <h5>Total warga berdasarkan umur</h5>
-        <AgeGroupBarChart residents={residents} />
+        {loading ? (
+          <div className="text-center mt-5">
+            <Spinner animation="border" variant="primary" />
+          </div>
+        ) : (
+          <>
+            <Row className="g-4 mb-4">
+              {/* Left: Warga Overview */}
+              <Col md={6}>
+                <Card className="p-3 h-100">
+                  <h5 className="mb-4">👥 Warga Overview</h5>
+
+                  {/* Row 1: Total Warga */}
+                  <Row className="g-3 mb-3">
+                    <Col md={4}>
+                      <div style={{ height: '250px' }}>
+                        <TotalResidentsCard residents={residents} />
+                      </div>
+                    </Col>
+                    <Col md={8}>
+                      {/* Row 2: Pie Charts inside same Col */}
+                      <Row className="g-3">
+                        <Col md={6}>
+                          <div style={{ height: '250px' }}>
+                            <GenderPieChart residents={residents} />
+                          </div>
+                        </Col>
+                        <Col md={6}>
+                          <div style={{ height: '250px' }}>
+                            <MaritalStatusPieChart residents={residents} />
+                          </div>
+                        </Col>
+                      </Row>
+                    </Col>
+                  </Row>
+
+                  {/* Row 3: Demografi Warga */}
+                  <Row>
+                    <Col>
+                      <div>
+                        <DemografiWargaCard residents={residents} />
+                      </div>
+                    </Col>
+                  </Row>
+                </Card>
+              </Col>
+
+              {/* Right: Keuangan Overview */}
+              <Col md={6}>
+                <Card className="p-3 h-100">
+                  <KeuanganOverviewCard />
+                </Card>
+              </Col>
+            </Row>
+          </>
+        )}
       </div>
     </AdminLayout>
   );

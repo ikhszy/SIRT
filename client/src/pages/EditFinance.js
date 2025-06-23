@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { useParams, useNavigate } from 'react-router-dom';
 import AdminLayout from '../layouts/AdminLayout';
 import ModalDialog from '../Components/ModalDialog';
@@ -14,7 +14,7 @@ const EditFinance = () => {
 
   const [formData, setFormData] = useState({
     tanggal: '',
-    kategori: '',
+    kategori: '', 
     nominal: '',
     keterangan: '',
     jenisPendapatan: '',
@@ -35,17 +35,23 @@ const EditFinance = () => {
   });
 
   useEffect(() => {
-    axios.get(`/api/finance/${type}/${id}`, { headers: { Authorization: token } })
+    api.get(`/finance/${type}/${id}`, { headers: { Authorization: token } })
       .then(res => {
         if (res.data) {
           const data = res.data;
+
+          let formattedMonths = '';
+            if (data.months && Array.isArray(data.months) && data.months.length > 0) {
+              formattedMonths = data.months.join(',');
+            }
+
           setFormData({
             tanggal: data.transactionDate || '',
             kategori: type === 'income' ? 'Pendapatan' : 'Pengeluaran',
             nominal: data.transactionAmount || '',
             keterangan: data.remarks || '',
             jenisPendapatan: data.addressId ? 'Iuran' : 'Lainnya',
-            bulan: '',
+            bulan: formattedMonths, // ✅ this is now correctly formatted
             addressId: data.addressId || '',
           });
         }
@@ -56,14 +62,14 @@ const EditFinance = () => {
         else navigate('/dashboard');
       });
 
-    axios.get('/api/settings', { headers: { Authorization: token } })
+    api.get('/settings', { headers: { Authorization: token } })
       .then(res => {
         if (res.data.perMonthAmount) {
           setPerMonthAmount(res.data.perMonthAmount);
         }
       });
 
-    axios.get('/api/address', { headers: { Authorization: token } })
+    api.get('/address', { headers: { Authorization: token } })
       .then(res => {
         setAddresses(res.data);
       })
@@ -85,7 +91,7 @@ const EditFinance = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      await axios.put(`/api/finance/${type}/${id}`, formData, {
+      await api.put(`/finance/${type}/${id}`, formData, {
         headers: { Authorization: token },
       });
 
@@ -127,7 +133,7 @@ const EditFinance = () => {
 
               <div className="mb-3">
                 <label>Kategori</label>
-                <select className="form-control" name="kategori" value={formData.kategori} onChange={handleChange} required>
+                <select className="form-control" name="kategori" value={formData.kategori} onChange={handleChange} required disabled={!!id}>
                   <option value="">-- Pilih --</option>
                   <option value="Pendapatan">Pendapatan</option>
                   <option value="Pengeluaran">Pengeluaran</option>
@@ -138,7 +144,7 @@ const EditFinance = () => {
                 <>
                   <div className="mb-3">
                     <label>Jenis Pendapatan</label>
-                    <select className="form-control" name="jenisPendapatan" value={formData.jenisPendapatan} onChange={handleChange} required>
+                    <select className="form-control" name="jenisPendapatan" value={formData.jenisPendapatan} onChange={handleChange} required disabled={!!id}>
                       <option value="">-- Pilih --</option>
                       <option value="Iuran">Iuran</option>
                       <option value="Lainnya">Lainnya</option>
@@ -149,11 +155,11 @@ const EditFinance = () => {
                     <>
                       <div className="mb-3">
                         <label>Bulan (MM-YYYY)</label>
-                        <input type="text" className="form-control" name="bulan" value={formData.bulan} onChange={handleChange} placeholder="Contoh: 06-2025" required />
+                        <input type="text" className="form-control" name="bulan" value={formData.bulan} onChange={handleChange} placeholder="Contoh: 06-2025" required disabled={!!id} />
                       </div>
                       <div className="mb-3">
                         <label>Alamat</label>
-                        <select className="form-control" name="addressId" value={formData.addressId} onChange={handleChange} required>
+                        <select className="form-control" name="addressId" value={formData.addressId} onChange={handleChange} required disabled={!!id} >
                           <option value="">-- Pilih Alamat --</option>
                           {addresses.map(addr => (
                             <option key={addr.id} value={addr.id}>

@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import AdminLayout from "../layouts/AdminLayout";
 import api from "../api";
+import ModalDialog from "../Components/ModalDialog";
+import { useNavigate } from "react-router-dom";
 
 export default function BulkImportAddress() {
   const [file, setFile] = useState(null);
@@ -8,12 +10,15 @@ export default function BulkImportAddress() {
   const [errors, setErrors] = useState([]);
   const [inserted, setInserted] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const navigate = useNavigate();
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
     setPreviewData([]);
     setErrors([]);
     setInserted([]);
+    setShowSuccessModal(false);
   };
 
   const handlePreview = async () => {
@@ -24,15 +29,18 @@ export default function BulkImportAddress() {
 
     setLoading(true);
     try {
-      const res = await api.post("/address-import/preview", formData);
+      const res = await api.post("/address-import/preview", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       if (res.data.success) {
-        setPreviewData(res.data.data);
-        setErrors([]);
+        setPreviewData(res.data.data || []);
+        setErrors(res.data.errors || []);
+        setInserted([]);
       } else {
-        alert("Preview failed");
+        alert("Preview failed.");
       }
     } catch (error) {
-      alert("Error while previewing");
+      alert("Error while previewing.");
     } finally {
       setLoading(false);
     }
@@ -47,24 +55,38 @@ export default function BulkImportAddress() {
     setLoading(true);
     try {
       const res = await api.post("/address-import/bulk", formData);
-      if (res.data.success) {
-        setInserted(res.data.inserted);
-        setErrors(res.data.errors);
-        alert("Import completed");
+      setInserted(res.data.inserted || []);
+      setErrors(res.data.errors || []);
+
+      if (res.data.success && res.data.inserted.length > 0) {
+        setShowSuccessModal(true);
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          navigate("/addresses");
+        }, 3000);
       } else {
-        alert("Import failed");
+        alert("Tidak ada baris yang berhasil diimpor.");
       }
     } catch (error) {
-      alert("Error during import");
+      alert("Import gagal.");
     } finally {
       setLoading(false);
     }
   };
 
+  const hasDuplicate = previewData.some((row) => row.__duplicate);
+  const hasError = errors.length > 0;
+  const getRowError = (rowNumber) => {
+    const err = errors.find((e) => e.row === rowNumber);
+    return err ? err.message : null;
+  };
+
   return (
     <AdminLayout>
       <div className="container-fluid px-4">
-        <h1 className="h3 mb-3 text-gray-800">Bulk Import Addresses</h1>
+        <h1 className="h3 text-gray-800 mb-4">
+          <i className="fas fa-file-upload me-2"></i> Import Alamat
+        </h1>
 
         <div className="mb-3">
           <input
@@ -74,6 +96,7 @@ export default function BulkImportAddress() {
             className="form-control"
           />
         </div>
+
         <a
           href="http://localhost:5000/public/templates/Household_template.xlsx"
           className="btn btn-primary me-2"
@@ -81,6 +104,7 @@ export default function BulkImportAddress() {
         >
           <i className="fas fa-download me-2"></i>Download Excel Template
         </a>
+
         <button
           className="btn btn-primary me-2"
           onClick={handlePreview}
@@ -92,7 +116,9 @@ export default function BulkImportAddress() {
         <button
           className="btn btn-success"
           onClick={handleImport}
-          disabled={loading || !file}
+          disabled={
+            loading || !file || previewData.length === 0 || hasError || hasDuplicate
+          }
         >
           Import
         </button>
@@ -104,43 +130,32 @@ export default function BulkImportAddress() {
               <thead className="table-light">
                 <tr>
                   <th>Row</th>
-                  <th>Alamat</th>
-                  <th>RT</th>
-                  <th>RW</th>
-                  <th>Kelurahan</th>
-                  <th>Kecamatan</th>
-                  <th>Kota</th>
-                  <th>Kode pos</th>
+                  <th>Alamat Lengkap</th>
                 </tr>
               </thead>
               <tbody>
-                {previewData.map((row, idx) => (
-                  <tr key={idx}>
-                    <td>{idx + 2}</td>
-                    <td>{row["Alamat Lengkap"] || "-"}</td>
-                    <td>{row["RT"] || "-"}</td>
-                    <td>{row["RW"] || "-"}</td>
-                    <td>{row["Kelurahan"] || "-"}</td>
-                    <td>{row["Kecamatan"] || "-"}</td>
-                    <td>{row["Kota"] || "-"}</td>
-                    <td>{row["Kodepos"] || "-"}</td>
-                  </tr>
-                ))}
+                {previewData.map((row, idx) => {
+                  const isDuplicate = row.__duplicate;
+                  const errorMsg = getRowError(row.__rowNumber);
+                  const rowClass = isDuplicate || errorMsg ? "table-danger" : "";
+
+                  return (
+                    <tr key={idx} className={rowClass}>
+                      <td>{row.__rowNumber}</td>
+                      <td>
+                        {row["Alamat Lengkap"] || "-"}
+                        {isDuplicate && (
+                          <span className="ms-2 text-danger fw-bold">(Duplikat)</span>
+                        )}
+                        {errorMsg && (
+                          <div className="text-danger small">(Error: {errorMsg})</div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-          </div>
-        )}
-
-        {errors.length > 0 && (
-          <div className="mt-4 alert alert-danger">
-            <h5>Errors</h5>
-            <ul>
-              {errors.map((err, i) => (
-                <li key={i}>
-                  Row {err.row}: {err.message}
-                </li>
-              ))}
-            </ul>
           </div>
         )}
 
@@ -155,6 +170,17 @@ export default function BulkImportAddress() {
           </div>
         )}
       </div>
+
+      <ModalDialog
+        show={showSuccessModal}
+        title="Import Berhasil"
+        message={`Data alamat berhasil diimpor sebanyak ${inserted.length} baris.`}
+        isSuccess={true}
+        onClose={() => {
+          setShowSuccessModal(false);
+          navigate("/addresses");
+        }}
+      />
     </AdminLayout>
   );
 }

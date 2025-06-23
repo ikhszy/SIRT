@@ -283,7 +283,7 @@ export default function AddResident() {
                     onChange={handleChange}
                   >
                     <option value="">-- Pilih --</option>
-                    <option value="Laki-laki">Laki-laki</option>
+                    <option value="Laki-Laki">Laki-Laki</option>
                     <option value="Perempuan">Perempuan</option>
                   </select>
                   {fieldErrors.gender && (

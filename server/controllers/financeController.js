@@ -35,17 +35,43 @@ exports.getAllIncome = (req, res) => {
 
 exports.getIncomeById = (req, res) => {
   const { id } = req.params;
+
   const sql = `
-    SELECT i.*, r.full_name FROM income i
+    SELECT 
+      i.*, 
+      r.full_name
+    FROM income i
     LEFT JOIN residents r ON i.residentId = r.id
     WHERE i.id = ? AND i.status = 'A'
   `;
-  db.get(sql, [id], (err, row) => {
+
+  db.get(sql, [id], (err, incomeRow) => {
     if (err) return res.status(500).json({ error: err.message });
-    if (!row) return res.status(404).json({ error: 'Income not found' });
-    res.json(row);
+    if (!incomeRow) return res.status(404).json({ error: 'Income not found' });
+
+    // Now fetch donation months if it's iuran
+    const donationSql = `
+      SELECT month FROM donation_history
+      WHERE 
+        income_id = ? AND status = 'A'
+    `;
+
+    db.all(donationSql, [id], (monthErr, rows) => {
+      if (monthErr) return res.status(500).json({ error: monthErr.message });
+
+      // Convert YYYY-MM → MM-YYYY
+      const months = rows.map(row => {
+        const [year, month] = row.month.split('-');
+        return `${month}-${year}`;
+      });
+
+      incomeRow.months = months;
+      res.json(incomeRow);
+    });
   });
 };
+
+
 
 exports.addIncome = (req, res) => {
   const {
@@ -72,20 +98,32 @@ exports.addIncome = (req, res) => {
 
   let finalRemarks = remarks;
 
-  const insertDonationHistory = (callback) => {
-    if (!months.length) return callback();
+  const insertDonationHistory = (incomeId, transactionAmount, transactionDate, callback) => {
+  if (!months.length) return callback();
 
-    const stmt = db.prepare(`
-      INSERT OR IGNORE INTO donation_history (address_Id, month, created_at, updated_at, status)
-      VALUES (?, ?, ?, ?, 'A')
-    `);
+  const stmt = db.prepare(`
+    INSERT OR IGNORE INTO donation_history
+    (address_id, month, amount, date_paid, created_at, updated_at, status, income_id)
+    VALUES (?, ?, ?, ?, ?, ?, 'A', ?)
+  `);
 
-    months.forEach((month) => {
-      stmt.run([numericAddressId, month, now, now]);
-    });
+  months.forEach((month) => {
+    const parts = month.split('-');
+    const normalizedMonth = parts.length === 2 ? `${parts[1]}-${parts[0].padStart(2, '0')}` : month;
 
-    stmt.finalize(callback);
-  };
+    stmt.run(
+      numericAddressId,
+      normalizedMonth,
+      transactionAmount,
+      transactionDate,
+      now,
+      now,
+      incomeId // ✅ new field
+    );
+  });
+
+  stmt.finalize(callback);
+};
 
   const insertIncome = () => {
     const sql = `
@@ -116,7 +154,9 @@ exports.addIncome = (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
 
         if (isDonation) {
-          insertDonationHistory(() => res.json({ id: this.lastID }));
+          insertDonationHistory(this.lastID, transactionAmount, transactionDate, () =>
+            res.json({ id: this.lastID })
+          );
         } else {
           res.json({ id: this.lastID });
         }
@@ -131,7 +171,27 @@ exports.addIncome = (req, res) => {
       if (err || !row) return res.status(400).json({ error: 'Address not found' });
 
       finalRemarks = `Iuran - ${row.full_address}`;
-      insertIncome();
+
+      // Check for duplicate iuran payment
+      const monthCheck = months[0];
+      const [m, y] = monthCheck.split('-');
+      const normalizedMonth = `${y}-${m.padStart(2, '0')}`;
+
+      const checkSql = `
+        SELECT id FROM donation_history 
+        WHERE address_id = ? AND month = ? AND status = 'A'
+      `;
+
+      db.get(checkSql, [numericAddressId, normalizedMonth], (err2, existing) => {
+        if (err2) return res.status(500).json({ error: err2.message });
+
+        if (existing) {
+          return res.status(400).json({ error: `Pembayaran bulan ini sudah lunas untuk alamat ${row.full_address}` });
+        }
+
+        // Proceed only if no duplicate
+        insertIncome();
+      });
     });
   } else {
     insertIncome();
@@ -140,29 +200,98 @@ exports.addIncome = (req, res) => {
 
 exports.updateIncome = (req, res) => {
   const { id } = req.params;
-  const { addressId, residentId, remarks, transactionAmount, transactionDate, months = [] } = req.body;
+  const {
+    addressId,
+    residentId,
+    remarks,
+    months = [],
+  } = req.body;
+
+  const transactionAmount = req.body.transactionAmount ?? req.body.nominal;
+  const transactionDate = req.body.transactionDate ?? req.body.tanggal;
   const now = getNow();
 
   let finalRemarks = remarks;
 
+  const newMonth = Array.isArray(months) && months.length > 0 ? months[0] : null;
+
+  let normalizedMonth = null;
+  if (newMonth) {
+    const parts = newMonth.split('-');
+    if (parts.length === 2) {
+      normalizedMonth = `${parts[1]}-${parts[0].padStart(2, '0')}`;
+    }
+  }
+
+  // Fetch original income
+  const originalSql = `SELECT addressId FROM income WHERE id = ? AND status = 'A'`;
+  db.get(originalSql, [id], (err, original) => {
+    if (err || !original) return res.status(400).json({ error: 'Original income not found' });
+
+    const originalAddressId = original.addressId;
+    const isAddressChanged = addressId != originalAddressId;
+    const isMonthChanged = true;
+
+    // Validate duplicate if needed
+    const checkDuplicateAndProceed = () => {
+      if (!normalizedMonth) return performUpdate();
+
+      if (isAddressChanged || isMonthChanged) {
+        const checkSql = `
+          SELECT d.id, a.full_address 
+          FROM donation_history d
+          JOIN address a ON a.id = d.address_id
+          WHERE d.address_id = ? 
+            AND d.month = ? 
+            AND d.status = 'A'
+            AND d.income_id != ?
+        `;
+        db.get(checkSql, [addressId, normalizedMonth, id], (checkErr, existing) => {
+          if (checkErr) return res.status(500).json({ error: checkErr.message });
+
+          if (existing) {
+            return res.status(400).json({
+              error: `Pembayaran bulan ini sudah lunas untuk alamat ${existing.full_address}`
+            });
+          }
+
+          performUpdate();
+        });
+      } else {
+        performUpdate();
+      }
+    };
+
+    // Always fetch full_address for remarks
+    if (addressId) {
+      const addressSql = `SELECT full_address FROM address WHERE id = ?`;
+      db.get(addressSql, [addressId], (err, row) => {
+        if (err || !row) return res.status(400).json({ error: 'Address not found' });
+        finalRemarks = `Iuran - ${row.full_address}`;
+        checkDuplicateAndProceed();
+      });
+    } else {
+      checkDuplicateAndProceed();
+    }
+  });
+
   const updateDonationHistory = (callback) => {
     if (!addressId || !months.length) return callback();
 
-    // First soft-delete all existing history for this address
     const softDeleteSql = `
       UPDATE donation_history SET status = 'D', date_modified = ?
-      WHERE address_id = ? AND status = 'A'
+      WHERE address_id = ? AND income_id = ?
     `;
-    db.run(softDeleteSql, [now, addressId], (err) => {
+    db.run(softDeleteSql, [now, addressId, id], (err) => {
       if (err) return callback(err);
 
-      // Insert new months (with INSERT OR IGNORE to avoid dupes)
       const stmt = db.prepare(`
-        INSERT OR IGNORE INTO donation_history (address_Id, month, created_at, updated_at, status)
-        VALUES (?, ?, ?, ?, 'A')
+        INSERT OR IGNORE INTO donation_history
+        (address_id, month, created_at, updated_at, status, income_id)
+        VALUES (?, ?, ?, ?, 'A', ?)
       `);
       months.forEach(month => {
-        stmt.run([addressId, month, now, now]);
+        stmt.run([addressId, month, now, now, id]);
       });
       stmt.finalize(callback);
     });
@@ -187,28 +316,37 @@ exports.updateIncome = (req, res) => {
       }
     });
   };
-
-  if (addressId) {
-    const addressSql = `SELECT full_address FROM address WHERE id = ?`;
-    db.get(addressSql, [addressId], (err, row) => {
-      if (err || !row) return res.status(400).json({ error: 'Address not found' });
-      finalRemarks = `Iuran - ${row.full_address}`;
-      performUpdate();
-    });
-  } else {
-    performUpdate();
-  }
 };
 
 exports.deleteIncome = (req, res) => {
   const { id } = req.params;
   const now = getNow();
-  const sql = `
-    UPDATE income SET status = 'D', date_modified = ? WHERE id = ?
-  `;
-  db.run(sql, [now, id], function (err) {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ deleted: this.changes });
+
+  const getAddressSql = `SELECT addressId FROM income WHERE id = ?`;
+  db.get(getAddressSql, [id], (err, row) => {
+    if (err || !row) return res.status(400).json({ error: 'Income not found or DB error' });
+
+    const { addressId } = row;
+
+    const updateIncomeSql = `UPDATE income SET status = 'D', date_modified = ? WHERE id = ?`;
+    db.run(updateIncomeSql, [now, id], function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+
+      // Soft delete donation history if this was an iuran
+      if (addressId) {
+        const updateDonationSql = `
+          UPDATE donation_history
+          SET status = 'D', updated_at = ?
+          WHERE address_id = ? AND status = 'A'
+        `;
+        db.run(updateDonationSql, [now, addressId], (err2) => {
+          if (err2) return res.status(500).json({ error: err2.message });
+          return res.json({ deleted: this.changes });
+        });
+      } else {
+        return res.json({ deleted: this.changes });
+      }
+    });
   });
 };
 
@@ -568,5 +706,94 @@ exports.getDonationSummary = (req, res) => {
       return res.status(500).json({ success: false, message: err.message });
     }
     res.json({ success: true, data: rows });
+  });
+};
+
+exports.getFinanceSummary = (req, res) => {
+  const { type = 'income', groupBy = 'monthly' } = req.query;
+  const table = type === 'expense' ? 'expense' : 'income';
+
+  let dateFormat;
+  if (groupBy === 'daily') dateFormat = "%Y-%m-%d";
+  else if (groupBy === 'yearly') dateFormat = "%Y";
+  else dateFormat = "%Y-%m"; // default monthly
+
+  const sql = `
+    SELECT 
+      strftime('${dateFormat}', transactionDate) as period,
+      SUM(transactionAmount) as total
+    FROM ${table}
+    WHERE status = 'A'
+    GROUP BY period
+    ORDER BY period ASC
+  `;
+
+  db.all(sql, [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+};
+
+exports.getIuranSummary = (req, res) => {
+  const year = new Date().getFullYear();
+
+  const totalSql = `SELECT COUNT(*) as total FROM address`;
+  const paidSql = `
+    SELECT COUNT(DISTINCT address_id) as paid
+    FROM donation_history
+    WHERE status = 'A' AND month LIKE '%-${year}'
+  `;
+
+  db.get(totalSql, [], (err, totalRow) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    db.get(paidSql, [], (err2, paidRow) => {
+      if (err2) return res.status(500).json({ error: err2.message });
+
+      res.json({
+        total: totalRow.total,
+        paid: paidRow.paid,
+        unpaid: totalRow.total - paidRow.paid
+      });
+    });
+  });
+};
+
+exports.getMonthlyIuranStatus = (req, res) => {
+  const { month, year, addressId } = req.query;
+  if (!month || !year) return res.status(400).json({ error: 'Month and year are required' });
+
+  const formattedMonth = `${year}-${month.padStart(2, '0')}`;
+  const params = [formattedMonth];
+  let filterClause = '';
+
+  if (addressId) {
+    filterClause = 'WHERE a.id = ?';
+    params.push(addressId);
+  }
+
+  const sql = `
+    SELECT 
+      a.id as addressId,
+      a.full_address AS address,
+      dh.month IS NOT NULL AS paid
+    FROM address a
+    LEFT JOIN donation_history dh 
+      ON a.id = dh.address_id 
+      AND dh.month = ? 
+      AND dh.status = 'A'
+    ${filterClause}
+    ORDER BY a.full_address ASC
+  `;
+
+  db.all(sql, params, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    const result = rows.map(row => ({
+      address: row.address,
+      status: row.paid ? 'paid' : 'unpaid'
+    }));
+
+    res.json(result);
   });
 };

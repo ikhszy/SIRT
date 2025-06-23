@@ -5,6 +5,8 @@ export default function AdminLayout({ children }) {
   const navigate = useNavigate();
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  console.log("✅ AdminLayout rendered");
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');

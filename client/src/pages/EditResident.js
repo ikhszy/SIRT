@@ -214,7 +214,7 @@ export default function EditResident() {
                   <label>Jenis Kelamin</label>
                   <select name="gender" className={inputClass('gender')} value={form.gender} onChange={handleChange} disabled={!isEditable}>
                     <option value="">-- Pilih --</option>
-                    <option value="Laki-laki">Laki-laki</option>
+                    <option value="Laki-Laki">Laki-Laki</option>
                     <option value="Perempuan">Perempuan</option>
                   </select>
                   {fieldErrors.gender && <div className="invalid-feedback">{fieldErrors.gender}</div>}

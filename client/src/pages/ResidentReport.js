@@ -62,12 +62,48 @@ export default function ResidentReport() {
 
   useEffect(() => {
     const parsed = { ...defaultFilters };
+    const ageGroup = query.get("age_group");
+    const gender = query.get("gender");
+    const marital = query.get("marital_status");
+
+    // Apply age group ranges
+    if (ageGroup === "anak") Object.assign(parsed, { min_age: "0", max_age: "12" });
+    else if (ageGroup === "remaja") Object.assign(parsed, { min_age: "13", max_age: "17" });
+    else if (ageGroup === "dewasa") Object.assign(parsed, { min_age: "18", max_age: "59" });
+    else if (ageGroup === "lansia") Object.assign(parsed, { min_age: "60", max_age: "150" });
+
+    // Parse all other query params
     for (let key of query.keys()) {
+      if ((key === 'min_age' || key === 'max_age') && ageGroup) continue;
       parsed[key] = Array.isArray(defaultFilters[key])
-        ? query.get(key)?.split(',') || []
+        ? (query.get(key) ? query.get(key).split(',') : [])
         : query.get(key) || '';
     }
+
     setFilters(parsed);
+    console.log('Parsed Filters:', parsed);
+
+    // Automatically fetch data if filters are set via query
+    const autoTrigger = ageGroup || gender || marital;
+    if (autoTrigger) {
+      const params = new URLSearchParams();
+      for (const key in parsed) {
+        const value = parsed[key];
+        if (Array.isArray(value) && value.length > 0) {
+          params.append(key, value.join(","));
+        } else if (value) {
+          params.append(key, value);
+        }
+      }
+
+      api.get(`/residents?${params.toString()}`)
+        .then((res) => {
+          const enriched = res.data.map(r => ({ ...r, age: calculateAge(r.birthdate) }));
+          setResidents(enriched);
+          setFetched(true);
+        })
+        .catch(() => setFetched(true));
+    }
   }, []);
 
   const fetchResidents = () => {

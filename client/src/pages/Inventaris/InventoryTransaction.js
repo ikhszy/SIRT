@@ -212,7 +212,7 @@ export default function InventoryTransaction() {
                   <th>Kondisi</th>
                   <th>Lokasi</th>
                   <th>Keterangan</th>
-                  <th>Aksi</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>

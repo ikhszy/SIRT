@@ -30,4 +30,11 @@ router.get("/donations/summary", authMiddleware, finance.getDonationSummary);
 
 console.log('finance.addIncome is:', finance.addIncome);
 
+// FINANCE DASHBOARD SUMMARY
+router.get('/summary', authMiddleware, finance.getFinanceSummary);
+router.get('/iuran-summary', authMiddleware, finance.getIuranSummary);
+
+// Finance Riwayat Iuran
+router.get('/iuran/status', authMiddleware, finance.getMonthlyIuranStatus);
+
 module.exports = router;

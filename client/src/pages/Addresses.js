@@ -12,14 +12,23 @@ export default function Addresses() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  console.log("✅ Addresses component mounted");
+
   useEffect(() => {
     const fetchData = async () => {
-      const [addrRes, settingsRes] = await Promise.all([
-        api.get('/address'),
-        api.get('/settings')
-      ]);
-      setAddresses(addrRes.data);
-      setSettings(settingsRes.data);
+      try {
+        const [addrRes, settingsRes] = await Promise.all([
+          api.get('/address'),
+          api.get('/settings')
+        ]);
+        setAddresses(addrRes.data);
+        setSettings(settingsRes.data);
+      } catch (err) {
+        console.error("Failed to fetch address/settings:", err);
+        alert("Gagal memuat data alamat. Coba login ulang jika masalah terus berlanjut.");
+        // Optional: redirect to dashboard instead of crashing
+        navigate("/dashboard");
+      }
     };
 
     fetchData();
@@ -86,7 +95,7 @@ export default function Addresses() {
                   paginatedAddresses.map((a) => (
                     <tr key={a.id}>
                       <td>
-                        {a.full_address}, RT {settings.rt}, RW {settings.rw}, Kelurahan {settings.kelurahan}, Kecamatan {settings.kecamatan}, Kota {settings.kota} {settings.kode_pos}
+                        {a.full_address}
                       </td>
                       <td>
                         <button

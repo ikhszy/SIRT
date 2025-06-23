@@ -77,10 +77,14 @@ const AddFinance = () => {
       }, 1500);
     } catch (err) {
       console.error(err);
+      const customError = err.response?.data?.error;
+
       setModal({
         show: true,
         title: 'Gagal',
-        message: '❌ Gagal menambahkan data.',
+        message: customError 
+          ? `❌ ${customError}` 
+          : '❌ Gagal menambahkan data.',
         isSuccess: false
       });
     } finally {

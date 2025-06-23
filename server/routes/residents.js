@@ -14,7 +14,8 @@ router.get("/", authMiddleware, async (req, res) => {
 
     const {
       full_name = '', nik = '', kk_number = '', gender = '', birthplace = '',
-      education = '', occupation = '', full_address = '', status = ''
+      education = '', occupation = '', full_address = '', status = '',
+      min_age = '', max_age = ''
     } = req.query;
 
     const filters = [];
@@ -24,37 +25,82 @@ router.get("/", authMiddleware, async (req, res) => {
       filters.push(`r.full_name LIKE ?`);
       params.push(`%${full_name}%`);
     }
+    
     if (nik) {
       filters.push(`r.nik LIKE ?`);
       params.push(`%${nik}%`);
     }
+
     if (kk_number) {
       filters.push(`r.kk_number LIKE ?`);
       params.push(`%${kk_number}%`);
     }
+
     if (gender) {
       filters.push(`r.gender LIKE ?`);
       params.push(`%${gender}%`);
     }
+    
     if (birthplace) {
       filters.push(`r.birthplace LIKE ?`);
       params.push(`%${birthplace}%`);
     }
+
     if (education) {
       filters.push(`r.education LIKE ?`);
       params.push(`%${education}%`);
     }
+
     if (occupation) {
       filters.push(`r.occupation LIKE ?`);
       params.push(`%${occupation}%`);
     }
+    if (req.query.marital_status) {
+      const values = req.query.marital_status.split(',');
+      filters.push(`r.marital_status IN (${values.map(() => '?').join(',')})`);
+      params.push(...values);
+    }
+
+    if (req.query.blood_type) {
+      const values = req.query.blood_type.split(',');
+      filters.push(`r.blood_type IN (${values.map(() => '?').join(',')})`);
+      params.push(...values);
+    }
+
+    if (req.query.relationship) {
+      const values = req.query.relationship.split(',');
+      filters.push(`r.relationship IN (${values.map(() => '?').join(',')})`);
+      params.push(...values);
+    }
+
+    if (req.query.citizenship) {
+      const values = req.query.citizenship.split(',');
+      filters.push(`r.citizenship IN (${values.map(() => '?').join(',')})`);
+      params.push(...values);
+    }
+
     if (status) {
       filters.push(`r.status = ?`);
       params.push(status);
     }
+
     if (full_address) {
       filters.push(`a.full_address LIKE ?`);
       params.push(`%${full_address}%`);
+    }
+
+    // ✅ New: Add age range filter (birthdate between X and Y years ago)
+    if (min_age && max_age) {
+      // Add 1 day to upper bound to ensure inclusive of exact age
+      const maxAgeAdjusted = `${parseInt(max_age) + 1} years`;
+      filters.push(`r.birthdate BETWEEN date('now', ?) AND date('now', ?)`);
+      params.push(`-${maxAgeAdjusted}`, `-${min_age} years`);
+    } else if (min_age) {
+      filters.push(`r.birthdate <= date('now', ?)`);
+      params.push(`-${min_age} years`);
+    } else if (max_age) {
+      filters.push(`r.birthdate >= date('now', ?)`);
+      params.push(`-${max_age} years`);
     }
 
     const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";

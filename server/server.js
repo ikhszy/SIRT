@@ -25,18 +25,20 @@ const inventoryTransactionsRoutes = require('./routes/inventoryTransactionsRoute
 app.use(cors());
 app.use(express.json());
 
+// unprotected routes
 app.use('/api', authRoutes); // login doesn't need auth
+app.use("/uploads", express.static('uploads'));
+app.use("/public", express.static(path.join(__dirname, 'public')));
 
 // Apply authMiddleware to everything below (protected routes)
 app.use(authMiddleware);
 
+// protected API routes
 app.use('/api/dashboard', dashboardRoutes);
 app.use("/api/residents", residentsRoutes);
 app.use("/api/households", householdsRoutes);
 app.use("/api/resident-details", residentDetailsRoutes);
 app.use("/api/address", addressRoutes);
-app.use("/uploads", express.static('uploads'));
-app.use("/public", express.static(path.join(__dirname, 'public')));
 app.use("/api/address-import", addressImportRouter);
 app.use("/api/households-import", householdsImportRouter);
 app.use("/api/residents-import", bulkResidentsRouter);
@@ -46,6 +48,15 @@ app.use("/api/users", usersRoutes);
 app.use('/api/surat', introLettersRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/inventory-transactions', inventoryTransactionsRoutes);
+
+app.use((req, res, next) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Internal Server Error' });
+});
 
 const PORT = 5000;
 app.listen(PORT, () => {
