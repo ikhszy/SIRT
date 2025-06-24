@@ -68,3 +68,23 @@ exports.deleteAddress = (req, res) => {
     res.status(204).end();
   });
 };
+
+// CHECK for duplicate address
+exports.checkDuplicateAddress = (req, res) => {
+  const { normalized_address } = req.query;
+  if (!normalized_address) {
+    return res.status(400).json({ error: "normalized_address is required" });
+  }
+
+  const db = getDb();
+  db.all("SELECT full_address FROM address", [], (err, rows) => {
+    db.close();
+    if (err) return res.status(500).json({ error: err.message });
+
+    const normalize = (text) =>
+      text.toLowerCase().replace(/\./g, "").replace(/\s+/g, " ").trim();
+
+    const exists = rows.some((row) => normalize(row.full_address) === normalized_address);
+    res.json({ exists });
+  });
+};

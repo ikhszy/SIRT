@@ -735,19 +735,22 @@ exports.getFinanceSummary = (req, res) => {
 };
 
 exports.getIuranSummary = (req, res) => {
-  const year = new Date().getFullYear();
+  const now = new Date();
+  const year = now.getFullYear();
+  const monthStr = String(now.getMonth() + 1).padStart(2, '0'); // '06'
+  const targetMonth = `${year}-${monthStr}`; // '2025-06'
 
   const totalSql = `SELECT COUNT(*) as total FROM address`;
   const paidSql = `
     SELECT COUNT(DISTINCT address_id) as paid
     FROM donation_history
-    WHERE status = 'A' AND month LIKE '%-${year}'
+    WHERE status = 'A' AND month = ?
   `;
 
   db.get(totalSql, [], (err, totalRow) => {
     if (err) return res.status(500).json({ error: err.message });
 
-    db.get(paidSql, [], (err2, paidRow) => {
+    db.get(paidSql, [targetMonth], (err2, paidRow) => {
       if (err2) return res.status(500).json({ error: err2.message });
 
       res.json({

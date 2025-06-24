@@ -1,21 +1,58 @@
 import React, { useEffect, useState } from 'react';
 import { Line, Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip, Legend } from 'chart.js';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip, Legend);
 
-export default function KeuanganOverviewCard() {
+export default function KeuanganOverviewCard({ onOpenRiwayat  }) {
   const [period, setPeriod] = useState('monthly');
   const [incomeData, setIncomeData] = useState([]);
   const [expenseData, setExpenseData] = useState([]);
   const [iuranSummary, setIuranSummary] = useState({ paid: 0, unpaid: 0 });
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.get(`/finance/summary?type=income&groupBy=${period}`).then(res => setIncomeData(res.data));
     api.get(`/finance/summary?type=expense&groupBy=${period}`).then(res => setExpenseData(res.data));
     api.get('/finance/iuran-summary').then(res => setIuranSummary(res.data));
   }, [period]);
+
+  // Date range calculation
+  const formatLocalDate = (date) => date.toLocaleDateString('sv-SE'); // outputs 'YYYY-MM-DD'
+
+  const now = new Date();
+  const startDate = formatLocalDate(new Date(now.getFullYear(), now.getMonth(), 1));
+  const endDate = formatLocalDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+
+  // Click handlers
+  const handleLineClick = (status) => {
+    navigate('/finance/report', {
+      state: {
+        filters: {
+          rentangTanggal: [startDate, endDate],
+          status
+        }
+      }
+    });
+  };
+
+  const handleIuranClick = () => {
+    navigate('/finance', {
+      state: {
+        tab: 'riwayat',
+        filters: {
+          alamat: '',
+          bulan: currentMonth,
+          tahun: currentYear
+        }
+      }
+    });
+  };
 
   const incomeChart = {
     labels: incomeData.map(item => item.period),
@@ -58,14 +95,34 @@ export default function KeuanganOverviewCard() {
         </select>
       </div>
       <div className="row">
-        <div className="col-md-6 mb-4">
+        <div className="col-md-6 mb-4" onClick={() => handleLineClick('Pemasukan')} style={{ cursor: 'pointer' }}>
           <Line data={incomeChart} options={{ plugins: { legend: { display: true } } }} />
         </div>
-        <div className="col-md-6 mb-4">
+        <div className="col-md-6 mb-4" onClick={() => handleLineClick('Pengeluaran')} style={{ cursor: 'pointer' }}>
           <Line data={expenseChart} options={{ plugins: { legend: { display: true } } }} />
         </div>
-        <div className="col-md-4 offset-md-4">
-          <Doughnut data={donutChart} options={{ plugins: { legend: { position: 'bottom' } } }} />
+        <div
+          className="col-md-4 offset-md-4"
+          onClick={() => {
+            console.log('✅ Triggered donut click');
+            if (onOpenRiwayat) {
+              const now = new Date();
+              const bulan = now.getMonth() + 1;
+              const tahun = now.getFullYear();
+              console.log('🟡 Passing to onOpenRiwayat:', { bulan, tahun });
+              onOpenRiwayat({ bulan, tahun });
+            } else {
+              console.warn('⚠️ onOpenRiwayat not defined');
+            }
+          }}
+          style={{ cursor: 'pointer' }}
+        >
+          <Doughnut
+            data={donutChart}
+            options={{
+              plugins: { legend: { position: 'bottom' } },
+            }}
+          />
         </div>
       </div>
     </div>

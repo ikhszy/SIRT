@@ -1,10 +1,23 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import KeuanganTab from './KeuanganTab';
 import RiwayatIuranTab from './RiwayatIuranTab';
+import { useLocation } from 'react-router-dom';
 
 export default function FinanceTabs() {
-  const [currentTab, setCurrentTab] = useState('keuangan');
+  const location = useLocation();
+  const tabFromNav = location.state?.tab;
+  const filtersFromNav = location.state?.filters;
+
+  const [prefilledFilters, setPrefilledFilters] = useState(null);
+  const [currentTab, setCurrentTab] = useState(tabFromNav || 'keuangan');
+
+  useEffect(() => {
+    if (tabFromNav) setCurrentTab(tabFromNav);
+    if (tabFromNav === 'riwayat' && filtersFromNav) {
+      setPrefilledFilters(filtersFromNav);
+    }
+  }, [tabFromNav, filtersFromNav]);
 
   return (
     <AdminLayout>
@@ -43,8 +56,15 @@ export default function FinanceTabs() {
         </ul>
 
         <div>
-          {currentTab === 'keuangan' && <KeuanganTab />}
-          {currentTab === 'riwayat' && <RiwayatIuranTab />}
+          {currentTab === 'keuangan' && (
+            <KeuanganTab onOpenRiwayat={(filters) => {
+              setPrefilledFilters(filters);
+              setCurrentTab('riwayat');
+            }} />
+          )}
+          {currentTab === 'riwayat' && (
+            <RiwayatIuranTab prefilledFilters={prefilledFilters} />
+          )}
         </div>
       </div>
     </AdminLayout>

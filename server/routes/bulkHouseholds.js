@@ -46,6 +46,10 @@ router.post("/preview", upload.single("file"), (req, res) => {
     const rowNumber = index + 2;
     const kk_number = (row["Nomor KK"] || "").toString().trim();
     const address_text = (row["Alamat Lengkap"] || "").toString().trim();
+    const status_kk = (row["Status KK"] || "").toString().trim();
+    const status_kk_remarks = (row["Keterangan Tidak Aktif"] || "").toString().trim();
+    const status_rumah = (row["Status Kepemilikan Rumah"] || "").toString().trim();
+    const menumpang_kk = (row["Menumpang pada KK:"] || "").toString().trim();
 
     if (!kk_number || !address_text) {
       errors.push({ row: rowNumber, message: "Missing KK number or address" });
@@ -65,6 +69,10 @@ router.post("/preview", upload.single("file"), (req, res) => {
           kk_number,
           address: address_text,
           address_id: addressRow.id,
+          status_KK: status_kk,
+          status_kepemilikan_rumah: status_rumah,
+          borrowed_from_kk: menumpang_kk,
+          status_KK_remarks: status_kk_remarks
         });
       }
 
@@ -105,6 +113,10 @@ router.post("/bulk", upload.single("file"), async (req, res) => {
       const rowNumber = index + 2;
       const kk_number = (row["Nomor KK"] || "").toString().trim();
       const full_address = (row["Alamat Lengkap"] || "").toString().trim();
+      const status_KK = (row["Status KK"] || "").toString().trim();
+      const status_KK_remarks = (row["Keterangan Tidak Aktif"] || "").toString().trim();
+      const status_kepemilikan_rumah = (row["Status Kepemilikan Rumah"] || "").toString().trim();
+      const menumpang_kk = (row["Menumpang pada KK:"] || "").toString().trim();
 
       if (!kk_number || !full_address) {
         errors.push({ row: rowNumber, message: "Required fields missing." });
@@ -133,8 +145,12 @@ router.post("/bulk", upload.single("file"), async (req, res) => {
             return resolve();
           }
 
-          const query = "INSERT INTO households (kk_number, address_id) VALUES (?, ?)";
-          db.run(query, [kk_number, addr.id], function (err) {
+          const query = `
+            INSERT INTO households (
+              kk_number, address_id, status_KK, status_kepemilikan_rumah, borrowed_from_kk, status_KK_remarks
+            ) VALUES (?, ?, ?, ?, ?, ?)
+          `;
+          db.run(query, [kk_number, addr.id, status_KK, status_kepemilikan_rumah, menumpang_kk, status_KK_remarks], function (err) {
             if (err) {
               errors.push({ row: rowNumber, message: err.message });
             } else {

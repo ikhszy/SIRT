@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
-const db = require('../db/db.js'); // Adjust path if needed
+const db = require('../db/db.js');
 
 // GET all households with address info
 router.get("/", authMiddleware, async (req, res) => {
@@ -40,17 +40,43 @@ router.get("/:kk_number", authMiddleware, async (req, res) => {
 // CREATE a new household
 router.post("/", authMiddleware, async (req, res) => {
   try {
-    const { kk_number, address_id, status_KK, status_kepemilikan_rumah, borrowed_from_kk } = req.body;
+    const {
+      kk_number,
+      address_id,
+      status_KK,
+      status_KK_remarks,
+      status_kepemilikan_rumah,
+      borrowed_from_kk
+    } = req.body;
 
     if (status_kepemilikan_rumah === "borrowed" && !borrowed_from_kk) {
       return res.status(400).json({ error: "borrowed_from_kk is required when status_kepemilikan_rumah is 'borrowed'" });
     }
 
     const sql = `
-      INSERT INTO households (kk_number, address_id, status_KK, status_kepemilikan_rumah, borrowed_from_kk)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO households (kk_number, address_id, status_KK, status_KK_remarks, status_kepemilikan_rumah, borrowed_from_kk)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
-    await db.run(sql, [kk_number, address_id, status_KK, status_kepemilikan_rumah, borrowed_from_kk || null]);
+    await db.run(sql, [
+      kk_number,
+      address_id,
+      status_KK,
+      status_KK === "tidak aktif" ? status_KK_remarks || "" : null,
+      status_kepemilikan_rumah,
+      borrowed_from_kk || null
+    ]);
+
+    // Auto-update resident status if KK is not active
+    if (status_KK === "tidak aktif") {
+      const updateResSql = `
+        UPDATE residents
+        SET status = 'tidak aktif - lainnya',
+            status_remarks = ?
+        WHERE kk_number = ?
+      `;
+      await db.run(updateResSql, [status_KK_remarks || 'KK tidak aktif', kk_number]);
+    }
+
     res.status(201).json({ message: "Household created" });
   } catch (err) {
     console.error("CREATE household failed:", err);
@@ -61,7 +87,13 @@ router.post("/", authMiddleware, async (req, res) => {
 // UPDATE household by KK number
 router.put("/:kk_number", authMiddleware, async (req, res) => {
   try {
-    const { address_id, status_KK, status_kepemilikan_rumah, borrowed_from_kk } = req.body;
+    const {
+      address_id,
+      status_KK,
+      status_KK_remarks,
+      status_kepemilikan_rumah,
+      borrowed_from_kk
+    } = req.body;
 
     if (status_kepemilikan_rumah === "borrowed" && !borrowed_from_kk) {
       return res.status(400).json({ error: "borrowed_from_kk is required when status_kepemilikan_rumah is 'borrowed'" });
@@ -69,19 +101,31 @@ router.put("/:kk_number", authMiddleware, async (req, res) => {
 
     const sql = `
       UPDATE households
-      SET address_id = ?, status_KK = ?, status_kepemilikan_rumah = ?, borrowed_from_kk = ?
+      SET address_id = ?, status_KK = ?, status_KK_remarks = ?, status_kepemilikan_rumah = ?, borrowed_from_kk = ?
       WHERE kk_number = ?
     `;
     const result = await db.run(sql, [
       address_id,
       status_KK,
+      status_KK === "tidak aktif" ? status_KK_remarks || "" : null,
       status_kepemilikan_rumah,
       borrowed_from_kk || null,
-      req.params.kk_number,
+      req.params.kk_number
     ]);
 
     if (result.changes === 0) {
       return res.status(404).json({ error: "Household not found" });
+    }
+
+    // Auto-update resident status if KK is not active
+    if (status_KK === "tidak aktif") {
+      const updateResSql = `
+        UPDATE residents
+        SET status = 'tidak aktif - lainnya',
+            status_remarks = ?
+        WHERE kk_number = ?
+      `;
+      await db.run(updateResSql, [status_KK_remarks || 'KK tidak aktif', req.params.kk_number]);
     }
 
     res.json({ message: "Household updated" });

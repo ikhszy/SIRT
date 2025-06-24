@@ -4,6 +4,7 @@ const authMiddleware = require('../middleware/authMiddleware');
 const addressController = require('../controllers/addressController');
 
 // Routes with controller delegation
+router.get("/check-duplicate", addressController.checkDuplicateAddress);
 router.get("/", authMiddleware, addressController.getAllAddresses);
 router.get("/:id", authMiddleware, addressController.getAddressById);
 router.post("/", authMiddleware, addressController.createAddress);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
@@ -8,10 +8,29 @@ export default function AddAddress() {
   const [form, setForm] = useState({ full_address: '' });
   const [modal, setModal] = useState({ show: false, message: '', title: '', isSuccess: true });
   const navigate = useNavigate();
+  
+  const [commonSettings, setCommonSettings] = useState(null);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const res = await api.get("/settings/");
+      setCommonSettings(res.data);
+    };
+
+    fetchSettings();
+  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
+
+  function normalizeAddress(text) {
+    return text
+      .toLowerCase()
+      .replace(/\./g, '') // remove dots
+      .replace(/\s+/g, ' ') // collapse spaces
+      .trim();
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,7 +46,26 @@ export default function AddAddress() {
     }
 
     try {
-      await api.post('/address', form);
+      if (!commonSettings) return;
+
+      const finalFullAddress = `${form.full_address} RT ${commonSettings.rt} RW ${commonSettings.rw} Kelurahan ${commonSettings.kelurahan}, Kecamatan ${commonSettings.kecamatan}, ${commonSettings.kota} ${commonSettings.kodepos}`;
+      const normalizedNewAddress = normalizeAddress(finalFullAddress);
+
+      const duplicateCheck = await api.get('/address/check-duplicate', {
+        params: { normalized_address: normalizedNewAddress }
+      });
+
+      if (duplicateCheck.data.exists) {
+        setModal({
+          show: true,
+          title: 'Duplikat',
+          message: 'Alamat sudah ada di database.',
+          isSuccess: false
+        });
+        return;
+      }
+
+      await api.post('/address', { full_address: finalFullAddress });
       setModal({
         show: true,
         title: 'Sukses',
@@ -35,9 +73,6 @@ export default function AddAddress() {
         isSuccess: true
       });
 
-      setTimeout(() => {
-        navigate('/addresses');
-      }, 1500);
     } catch (err) {
       console.error(err);
       setModal({
@@ -66,7 +101,7 @@ export default function AddAddress() {
                   name="full_address"
                   value={form.full_address}
                   onChange={handleChange}
-                  placeholder="Isikan nama jalan saja..."
+                  placeholder="Contoh: Jl. Sukma No. 1..."
                   required
                 />
               </div>
@@ -84,7 +119,10 @@ export default function AddAddress() {
         title={modal.title}
         message={modal.message}
         isSuccess={modal.isSuccess}
-        onClose={() => setModal((prev) => ({ ...prev, show: false }))}
+        onClose={() => {
+          setModal((prev) => ({ ...prev, show: false }));
+          if (modal.isSuccess) navigate('/addresses');
+        }}
       />
     </AdminLayout>
   );

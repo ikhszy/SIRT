@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
 import { Row, Col, Card, Spinner } from 'react-bootstrap';
 import AdminLayout from '../layouts/AdminLayout';
@@ -14,6 +15,7 @@ import KeuanganOverviewCard from '../Components/KeuanganOverviewCard';
 export default function Dashboard() {
   const [residents, setResidents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.get('/residents')
@@ -79,7 +81,16 @@ export default function Dashboard() {
               {/* Right: Keuangan Overview */}
               <Col md={6}>
                 <Card className="p-3 h-100">
-                  <KeuanganOverviewCard />
+                  <KeuanganOverviewCard
+                    onOpenRiwayat={({ bulan, tahun }) =>
+                      navigate('/finance', {
+                        state: {
+                          tab: 'riwayat',
+                          filters: { bulan, tahun, alamat: '' },
+                        },
+                      })
+                    }
+                  />
                 </Card>
               </Col>
             </Row>

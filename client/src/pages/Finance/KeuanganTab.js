@@ -83,7 +83,6 @@ export default function KeuanganTab() {
           aria-label="Search transactions by remarks"
         />
       </div>
-
       <div className="card shadow">
         <div className="card-body table-responsive p-0">
           <table className="table table-bordered mb-0">

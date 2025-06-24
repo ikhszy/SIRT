@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import AdminLayout from "../layouts/AdminLayout";
-import axios from "axios";
+import api from '../api';
 
 export default function BulkImportHouseholds() {
   const [file, setFile] = useState(null);
@@ -29,12 +29,11 @@ export default function BulkImportHouseholds() {
     formData.append("file", file);
 
     try {
-      const res = await axios.post("http://localhost:5000/api/households-import/preview", formData, {
+      const res = await api.post("/households-import/preview", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
       if (res.data.success) {
-        // Assuming backend returns 'data' as preview array and 'errors' if any
         setPreviewData(res.data.data || []);
         setErrors(res.data.errors || []);
       } else {
@@ -57,7 +56,7 @@ export default function BulkImportHouseholds() {
     formData.append("file", file);
 
     try {
-      const res = await axios.post("/api/households-import/bulk", formData, {
+      const res = await api.post("/households-import/bulk", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -144,15 +143,23 @@ export default function BulkImportHouseholds() {
             <table className="table table-bordered table-striped">
               <thead className="table-primary">
                 <tr>
-                  <th>KK Number</th>
-                  <th>Address</th>
+                  <th>Nomor KK</th>
+                  <th>Alamat</th>
+                  <th>Status KK</th>
+                  <th>Keterangan Tidak Aktif</th>
+                  <th>Status Kepemilikan Rumah</th>
+                  <th>Menumpang pada KK</th>
                 </tr>
               </thead>
               <tbody>
                 {previewData.map((row, i) => (
                   <tr key={i}>
-                    <td>{row["Nomor KK"] || row.kk_number || "-"}</td>
-                    <td>{row["Alamat Lengkap"] || row.address || "-"}</td>
+                    <td>{row.kk_number || "-"}</td>
+                    <td>{row.address || row["Alamat Lengkap"] || "-"}</td>
+                    <td>{row.status_KK || "-"}</td>
+                    <td>{row.status_KK_remarks || "-"}</td>
+                    <td>{row.status_kepemilikan_rumah || "-"}</td>
+                    <td>{row.borrowed_from_kk || "-"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -163,7 +170,7 @@ export default function BulkImportHouseholds() {
         {importResult && (
           <div className="alert alert-info">
             <h5>Import Result:</h5>
-            <p>Inserted rows: {importResult.inserted?.length || 0}</p>
+            <p>✅ Inserted rows: {importResult.inserted?.length || 0}</p>
             {importResult.errors?.length > 0 && (
               <>
                 <h6>Errors:</h6>

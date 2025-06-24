@@ -4,6 +4,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
+import { useLocation } from 'react-router-dom';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -12,12 +13,28 @@ const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('id-ID');
 
 const FinanceReport = () => {
   const [data, setData] = useState([]);
-  const [filters, setFilters] = useState({
-    min_transactionDate: '',
-    max_transactionDate: '',
-    status: '',
-    remarks: '',
-  });
+  const location = useLocation();
+  const defaultFilters = {
+  min_transactionDate: '',
+  max_transactionDate: '',
+  status: '',
+  remarks: '',
+};
+
+const locationFilters = location.state?.filters;
+
+const [filters, setFilters] = useState(() => {
+  if (locationFilters) {
+    return {
+      min_transactionDate: locationFilters.rentangTanggal?.[0] || '',
+      max_transactionDate: locationFilters.rentangTanggal?.[1] || '',
+      status: locationFilters.status === 'Pemasukan' ? 'income' :
+              locationFilters.status === 'Pengeluaran' ? 'expense' : '',
+      remarks: '',
+    };
+  }
+  return defaultFilters;
+});
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 

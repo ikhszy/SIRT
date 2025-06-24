@@ -16,9 +16,10 @@ const MONTHS = [
   { value: 12, label: 'Desember' },
 ];
 
-export default function RiwayatIuranTab() {
+export default function RiwayatIuranTab({ prefilledFilters }) {
   const currentYear = new Date().getFullYear();
   const yearOptions = [currentYear - 1, currentYear, currentYear + 1];
+  const [hasPrefilled, setHasPrefilled] = useState(false);
 
   const [addresses, setAddresses] = useState([]);
   const [selectedAddress, setSelectedAddress] = useState('');
@@ -31,18 +32,28 @@ export default function RiwayatIuranTab() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Fetch addresses on mount
   useEffect(() => {
-    const fetchAddresses = async () => {
-      try {
-        const res = await api.get('/address'); // change to your actual endpoint
-        setAddresses(res.data);
-      } catch (e) {
-        console.error('Failed to load addresses', e);
-      }
-    };
-    fetchAddresses();
-  }, []);
+    if (prefilledFilters && !hasPrefilled) {
+      const { bulan, tahun, alamat } = prefilledFilters;
+
+      if (bulan) setSelectedMonth(String(bulan));
+      if (tahun) setSelectedYear(String(tahun));
+      if (alamat) setSelectedAddress(alamat);
+
+      // wait one tick after state set, then trigger search
+      setTimeout(() => {
+        handleSearch();
+      }, 0);
+
+      setHasPrefilled(true);
+    }
+  }, [prefilledFilters, hasPrefilled]);
+
+  useEffect(() => {
+    if (hasPrefilled && selectedMonth && selectedYear) {
+      handleSearch();
+    }
+  }, [hasPrefilled, selectedMonth, selectedYear]);
 
   const handleSearch = async () => {
     if (!selectedMonth || !selectedYear) {

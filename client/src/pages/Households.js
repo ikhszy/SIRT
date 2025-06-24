@@ -5,8 +5,13 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Households() {
   const [households, setHouseholds] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
+  const [filters, setFilters] = useState({
+    kk_number: '',
+    full_address: '',
+    status_KK: '',
+    status_kepemilikan_rumah: ''
+  });
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -20,10 +25,10 @@ export default function Households() {
   }, []);
 
   const ownershipLabels = {
-    pemilik: 'Pemilik',
-    sewa: 'Kontrak / Sewa',
-    numpang_kk: 'Menumpang',
-    // fallback/default
+    'pemilik': 'Pemilik',
+    'sewa': 'Kontrak / Sewa',
+    'numpang alamat': 'Numpang Alamat',
+    'kost': 'Kost',
     null: '-',
     undefined: '-',
   };
@@ -34,10 +39,13 @@ export default function Households() {
     setHouseholds(households.filter(h => h.kk_number !== kk_number));
   };
 
-  const filtered = households.filter(h =>
-  h.kk_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  (h.full_address?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-  );
+  const filtered = households.filter(h => {
+    const matchKK = h.kk_number.toLowerCase().includes(filters.kk_number.toLowerCase());
+    const matchAddress = (h.full_address?.toLowerCase() || '').includes(filters.full_address.toLowerCase());
+    const matchStatusKK = filters.status_KK === '' || h.status_KK === filters.status_KK;
+    const matchOwnership = filters.status_kepemilikan_rumah === '' || h.status_kepemilikan_rumah === filters.status_kepemilikan_rumah;
+    return matchKK && matchAddress && matchStatusKK && matchOwnership;
+  });
 
   const totalItems = filtered.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -66,19 +74,50 @@ export default function Households() {
           </div>
         </div>
 
-        <div className="mb-3">
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Cari menggunakan Nomor Kartu Keluarga atau Alamat..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-          />
+        <div className="row g-2 mb-3">
+          <div className="col-md-3">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Nomor KK"
+              value={filters.kk_number}
+              onChange={(e) => setFilters(f => ({ ...f, kk_number: e.target.value }))}
+            />
+          </div>
+          <div className="col-md-3">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Alamat"
+              value={filters.full_address}
+              onChange={(e) => setFilters(f => ({ ...f, full_address: e.target.value }))}
+            />
+          </div>
+          <div className="col-md-3">
+            <select
+              className="form-control"
+              value={filters.status_KK}
+              onChange={(e) => setFilters(f => ({ ...f, status_KK: e.target.value }))}
+            >
+              <option value="">-- Status KK --</option>
+              <option value="aktif">Aktif</option>
+              <option value="tidak aktif">Tidak Aktif</option>
+            </select>
+          </div>
+          <div className="col-md-3">
+            <select
+              className="form-control"
+              value={filters.status_kepemilikan_rumah}
+              onChange={(e) => setFilters(f => ({ ...f, status_kepemilikan_rumah: e.target.value }))}
+            >
+              <option value="">-- Kepemilikan Rumah --</option>
+              <option value="pemilik">Pemilik</option>
+              <option value="sewa">Kontrak / Sewa</option>
+              <option value="numpang alamat">Menumpang KK</option>
+              <option value="kost">Kost</option>
+            </select>
+          </div>
         </div>
-
         <div className="card shadow mb-4">
           <div className="card-body">
             <div className="table-responsive">
@@ -87,6 +126,7 @@ export default function Households() {
                   <tr>
                     <th>Nomor Kartu Keluarga</th>
                     <th>Alamat</th>
+                    <th>Status KK</th>
                     <th>Status Kepemilikan Rumah</th>
                     <th>Actions</th>
                   </tr>
@@ -101,6 +141,7 @@ export default function Households() {
                       <tr key={h.kk_number}>
                         <td>{h.kk_number}</td>
                         <td>{h.full_address || '-'}</td>
+                        <td>{h.status_KK === 'tidak aktif' ? 'Tidak Aktif' : 'Aktif'}</td>
                         <td>{ownershipLabels[h.status_kepemilikan_rumah] || '-'}</td>
                         <td>
                           <button
