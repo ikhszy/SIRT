@@ -464,7 +464,7 @@ export default function AddResident() {
                   onChange={handleChange}
                 >
                   <option value="">-- Pilih --</option>
-                  <option value="Lokal">Aktif</option>
+                  <option value="aktif">Aktif</option>
                   <option value="tidak aktif - meninggal">Tidak Aktif - Meninggal</option>
                   <option value="tidak aktif - pindah">Tidak Aktif - Pindah</option>
                   <option value="tidak aktif - lainnya">Tidak Aktif - Lainnya</option>

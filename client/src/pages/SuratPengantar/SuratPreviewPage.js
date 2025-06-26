@@ -33,6 +33,7 @@ export default function SuratPreviewPage() {
     }
   };
 
+  // shit not working at all
   const handlePrint = () => {
     window.print();
   };
@@ -71,15 +72,28 @@ export default function SuratPreviewPage() {
 
   return (
     <AdminLayout>
-      <div className="mb-3 d-print-none text-end">
-        <Button variant="secondary" className="me-2" onClick={handlePrint}>
-          🖨️ Print Surat
-        </Button>
+      <div className="mb-3 d-print-none d-flex justify-content-end gap-2">
+        {letter.letterStatus !== 'Diserahkan' && (
+          <button
+            className="btn btn-outline-success"
+            onClick={async () => {
+              try {
+                await api.put(`/surat/${id}/status`, { letterStatus: 'Diserahkan' });
+                alert('Surat telah diserahkan.');
+                fetchData();
+              } catch (err) {
+                console.error('Gagal menyerahkan surat:', err);
+                alert('Gagal menyerahkan surat.');
+              }
+            }}
+          >
+            Tandai telah diserahkan
+          </button>
+        )}
         <Button variant="success" onClick={handleDownloadPDF}>
           📥 Download PDF
         </Button>
       </div>
-
       <div ref={letterRef}>
         <IntroLetterPreview
           resident={{
@@ -117,7 +131,7 @@ export default function SuratPreviewPage() {
               }
             }}
           >
-            Serahkan Surat
+            Tandai telah diserahkan
           </button>
         </div>
       )}

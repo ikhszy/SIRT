@@ -11,6 +11,12 @@ export default function Residents() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  // filters state
+  const [filterName, setFilterName] = useState('');
+  const [filterNIK, setFilterNIK] = useState('');
+  const [filterGender, setFilterGender] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+
   useEffect(() => {
     const fetchResidents = async () => {
       try {
@@ -32,12 +38,11 @@ export default function Residents() {
   }, []);
 
   const filteredResidents = residents.filter((res) => {
-    const query = searchTerm.toLowerCase();
     return (
-      res.full_name?.toLowerCase().includes(query) ||
-      res.nik?.toLowerCase().includes(query) ||
-      res.gender?.toLowerCase().includes(query) ||
-      res.kk_number?.toLowerCase().includes(query)
+      res.full_name?.toLowerCase().includes(filterName.toLowerCase()) &&
+      res.nik?.toLowerCase().includes(filterNIK.toLowerCase()) &&
+      (filterGender === '' || res.gender?.toLowerCase() === filterGender.toLowerCase()) &&
+      (filterStatus === '' || res.status?.toLowerCase() === filterStatus.toLowerCase())
     );
   });
 
@@ -81,17 +86,61 @@ export default function Residents() {
             </div>
         </div>
 
-        <div className="mb-3">
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Cari menggunakan Nama, NIK, Jenis Kelamin atau No.KK..."
-            value={searchTerm}
-            onChange={
-              (e) => {setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-          />
+        <div className="mb-3 row g-2">
+          <div className="col-md-3">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Cari Nama"
+              value={filterName}
+              onChange={(e) => {
+                setFilterName(e.target.value);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
+          <div className="col-md-3">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Cari NIK"
+              value={filterNIK}
+              onChange={(e) => {
+                setFilterNIK(e.target.value);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
+          <div className="col-md-3">
+            <select
+              className="form-select"
+              value={filterGender}
+              onChange={(e) => {
+                setFilterGender(e.target.value);
+                setCurrentPage(1);
+              }}
+            >
+              <option value="">Jenis Kelamin</option>
+              <option value="Laki-laki">Laki-laki</option>
+              <option value="Perempuan">Perempuan</option>
+            </select>
+          </div>
+          <div className="col-md-3">
+            <select
+              className="form-select"
+              value={filterStatus}
+              onChange={(e) => {
+                setFilterStatus(e.target.value);
+                setCurrentPage(1);
+              }}
+            >
+              <option value="">Semua Status NIK</option>
+              <option value="aktif">Aktif</option>
+              <option value="tidak aktif - meninggal">Tidak Aktif - Meninggal</option>
+              <option value="tidak aktif - pindah">Tidak Aktif - Pindah</option>
+              <option value="tidak aktif - lainnya">Tidak Aktif - Lainnya</option>
+            </select>
+          </div>
         </div>
 
         <div className="card shadow mb-4">

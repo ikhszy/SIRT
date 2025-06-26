@@ -298,7 +298,7 @@ export default function EditResident() {
               <div className="mb-3">
                 <label>Domisili</label>
                 <select name="status" className={inputClass('status')} value={form.status} onChange={handleChange} disabled={!isEditable}>
-                  <option value="Lokal">Aktif</option>
+                  <option value="aktif">Aktif</option>
                   <option value="tidak aktif - meninggal">Tidak Aktif - Meninggal</option>
                   <option value="tidak aktif - pindah">Tidak Aktif - Pindah</option>
                   <option value="tidak aktif - lainnya">Tidak Aktif - Lainnya</option>

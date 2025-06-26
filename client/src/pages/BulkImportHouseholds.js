@@ -1,20 +1,26 @@
 import React, { useState } from "react";
 import AdminLayout from "../layouts/AdminLayout";
 import api from '../api';
+import ModalDialog from "../Components/ModalDialog";
+import { useNavigate } from "react-router-dom";
 
 export default function BulkImportHouseholds() {
+  const navigate = useNavigate();
   const [file, setFile] = useState(null);
   const [previewData, setPreviewData] = useState([]);
   const [errors, setErrors] = useState([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [loadingImport, setLoadingImport] = useState(false);
   const [importResult, setImportResult] = useState(null);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
     setPreviewData([]);
     setErrors([]);
     setImportResult(null);
+    setShowSuccessModal(false);
   };
 
   const handlePreview = async () => {
@@ -51,6 +57,8 @@ export default function BulkImportHouseholds() {
 
     setLoadingImport(true);
     setImportResult(null);
+    setShowSuccessModal(false);
+    setShowErrorModal(false);
 
     const formData = new FormData();
     formData.append("file", file);
@@ -62,11 +70,22 @@ export default function BulkImportHouseholds() {
 
       if (res.data.success) {
         setImportResult(res.data);
+        setShowSuccessModal(true);
+
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          navigate("/households");
+        }, 3000);
+
+        setFile(null);
+        setPreviewData([]);
+        setErrors([]);
       } else {
-        alert("Import failed: " + (res.data.message || "Unknown error"));
+        setImportResult(res.data);
+        setShowErrorModal(true);
       }
     } catch (err) {
-      alert("Import request failed: " + err.message);
+      setShowErrorModal(true);
     } finally {
       setLoadingImport(false);
     }
@@ -186,6 +205,25 @@ export default function BulkImportHouseholds() {
           </div>
         )}
       </div>
+
+      <ModalDialog
+        show={showSuccessModal}
+        title="Import Berhasil"
+        message={`Data KK berhasil diimpor sebanyak ${importResult?.inserted?.length || 0} baris.`}
+        isSuccess={true}
+        onClose={() => {
+          setShowSuccessModal(false);
+          navigate("/households");
+        }}
+      />
+
+      <ModalDialog
+        show={showErrorModal}
+        title="Import Gagal"
+        message={`Import gagal. Pastikan data sudah sesuai dan tidak ada error pada preview.`}
+        isSuccess={false}
+        onClose={() => setShowErrorModal(false)}
+      />
     </AdminLayout>
   );
 }
