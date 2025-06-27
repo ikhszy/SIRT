@@ -21,8 +21,8 @@ router.delete('/expense/:id', authMiddleware, finance.deleteExpense);
 router.get('/report', authMiddleware, authMiddleware, finance.financeReport);
 
 // BULK IMPORT
-router.get('/finance_import/preview', authMiddleware, finance.previewFinanceImport);
-router.get('/finance_import/import', authMiddleware, finance.bulkFinanceImport);
+router.post('/import/preview', authMiddleware, finance.previewFinanceImport);
+router.post('/import/import', authMiddleware, finance.bulkFinanceImport);
 
 // DONATION HISTORY
 router.get('/donations/:addressId', authMiddleware, finance.getAddressDonations);

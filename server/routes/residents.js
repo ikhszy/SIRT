@@ -160,28 +160,39 @@ router.get("/:id", authMiddleware, async (req, res) => {
 // Create resident
 router.post("/", authMiddleware, async (req, res) => {
   try {
-    const {
+    let {
       full_name, nik, kk_number, gender, birthplace, birthdate,
       age, blood_type, religion, marital_status, relationship,
       education, occupation, citizenship, status, address_id,
-      status_remarks // 🆕
+      status_remarks
     } = req.body;
+
+    // 🔒 Check if the KK belongs to a locked household
+    const household = await db.get(
+      `SELECT status_kepemilikan_rumah FROM households WHERE kk_number = ?`,
+      [kk_number]
+    );
+
+    if (household?.status_kepemilikan_rumah === 'pemilik belum pindah') {
+      status = 'tidak aktif - domisili diluar';
+      status_remarks = null;
+    }
 
     const sql = `
       INSERT INTO residents (
-        full_name, nik, kk_number, gender, birthplace, birthdate,
-        age, blood_type, religion, marital_status, relationship,
+        full_name, nik, kk_number, gender, birthplace, birthdate, 
+        blood_type, religion, marital_status, relationship,
         education, occupation, citizenship, status, address_id,
         status_remarks
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const result = await db.run(sql, [
       full_name, nik, kk_number, gender, birthplace, birthdate,
-      age, blood_type, religion, marital_status, relationship,
+      blood_type, religion, marital_status, relationship,
       education, occupation, citizenship, status, address_id,
-      status_remarks // 🆕
+      status_remarks
     ]);
 
     res.json({ success: true, id: result.lastID });
@@ -194,26 +205,37 @@ router.post("/", authMiddleware, async (req, res) => {
 // Update resident
 router.put("/:id", authMiddleware, async (req, res) => {
   try {
-    const {
+    let {
       full_name, nik, kk_number, gender, birthplace, birthdate,
-      age, blood_type, religion, marital_status, relationship,
+      blood_type, religion, marital_status, relationship,
       education, occupation, citizenship, status, address_id,
-      status_remarks // 🆕
+      status_remarks
     } = req.body;
+
+    // 🔒 Check if the KK belongs to a locked household
+    const household = await db.get(
+      `SELECT status_kepemilikan_rumah FROM households WHERE kk_number = ?`,
+      [kk_number]
+    );
+
+    if (household?.status_kepemilikan_rumah === 'pemilik belum pindah') {
+      status = 'tidak aktif - domisili diluar';
+      status_remarks = null;
+    }
 
     const sql = `
       UPDATE residents SET
         full_name = ?, nik = ?, kk_number = ?, gender = ?, birthplace = ?, birthdate = ?,
-        age = ?, blood_type = ?, religion = ?, marital_status = ?, relationship = ?, education = ?,
+        blood_type = ?, religion = ?, marital_status = ?, relationship = ?, education = ?,
         occupation = ?, citizenship = ?, status = ?, address_id = ?, status_remarks = ?
       WHERE id = ?
     `;
 
     const result = await db.run(sql, [
       full_name, nik, kk_number, gender, birthplace, birthdate,
-      age, blood_type, religion, marital_status, relationship,
+      blood_type, religion, marital_status, relationship,
       education, occupation, citizenship, status, address_id,
-      status_remarks, // 🆕
+      status_remarks,
       req.params.id
     ]);
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
+import DataTableCard from '../Components/DataTableCard';
 
 export default function Households() {
   const [households, setHouseholds] = useState([]);
@@ -26,9 +27,9 @@ export default function Households() {
 
   const ownershipLabels = {
     'pemilik': 'Pemilik',
-    'sewa': 'Kontrak / Sewa',
+    'pemilik belum pindah': 'Pemilik (Belum pindah alamat)',
     'numpang alamat': 'Numpang Alamat',
-    'kost': 'Kost',
+    'sewa': 'Kontrak / Sewa',
     null: '-',
     undefined: '-',
   };
@@ -112,9 +113,9 @@ export default function Households() {
             >
               <option value="">-- Kepemilikan Rumah --</option>
               <option value="pemilik">Pemilik</option>
+              <option value="pemilik belum pindah">Pemilik (Belum pindah alamat)</option>
+              <option value="numpang alamat">Numpang Alamat</option>
               <option value="sewa">Kontrak / Sewa</option>
-              <option value="numpang alamat">Menumpang KK</option>
-              <option value="kost">Kost</option>
             </select>
           </div>
         </div>

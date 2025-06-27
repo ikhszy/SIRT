@@ -90,8 +90,18 @@ const EditFinance = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
+
     try {
-      await api.put(`/finance/${type}/${id}`, formData, {
+      const payload = {
+        transactionDate: formData.tanggal,
+        transactionAmount: Number(formData.nominal),
+        remarks: formData.keterangan || '', // Map it correctly
+        addressId: formData.jenisPendapatan === 'Iuran' ? formData.addressId : null,
+        residentId: null,
+        months: formData.jenisPendapatan === 'Iuran' && formData.bulan ? [formData.bulan] : [],
+      };
+
+      await api.put(`/finance/${type}/${id}`, payload, {
         headers: { Authorization: token },
       });
 

@@ -1,14 +1,39 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import ModalDialog from '../Components/ModalDialog';
 
 export default function AdminLayout({ children }) {
   const navigate = useNavigate();
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [modal, setModal] = useState({
+    show: false,
+    title: "",
+    message: "",
+    isSuccess: true,
+  });
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');
   };
+
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      console.log("Modal shown"); // ✅ for debugging
+      setModal({
+        show: true,
+        title: "Session Expired",
+        message: "Sesi Anda telah habis. Silakan login kembali.",
+        isSuccess: false,
+      });
+    };
+
+    window.addEventListener("sessionExpired", handleSessionExpired);
+
+    return () => {
+      window.removeEventListener("sessionExpired", handleSessionExpired);
+    };
+  }, []);
 
   const [openMenus, setOpenMenus] = useState({
     dataWarga: false,
@@ -191,6 +216,17 @@ export default function AdminLayout({ children }) {
 
         <main className="p-4">{children}</main>
       </div>
+      <ModalDialog
+        show={modal.show}
+        title={modal.title}
+        message={modal.message}
+        isSuccess={modal.isSuccess}
+        onClose={() => {
+          setModal(prev => ({ ...prev, show: false }));
+          localStorage.removeItem("token");
+          navigate("/login");
+        }}
+      />
     </div>
   );
 }

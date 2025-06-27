@@ -50,6 +50,7 @@ router.post("/preview", upload.single("file"), (req, res) => {
     const status_kk_remarks = (row["Keterangan Tidak Aktif"] || "").toString().trim();
     const status_rumah = (row["Status Kepemilikan Rumah"] || "").toString().trim();
     const menumpang_kk = (row["Menumpang pada KK:"] || "").toString().trim();
+    const kepemilikan_remarks = (row["Keterangan Kepemilikan"] || "").toString().trim();
 
     if (!kk_number || !address_text) {
       errors.push({ row: rowNumber, message: "Missing KK number or address" });
@@ -72,7 +73,8 @@ router.post("/preview", upload.single("file"), (req, res) => {
           status_KK: status_kk,
           status_kepemilikan_rumah: status_rumah,
           borrowed_from_kk: menumpang_kk,
-          status_KK_remarks: status_kk_remarks
+          status_KK_remarks: status_kk_remarks,
+          kepemilikan_remarks: kepemilikan_remarks          
         });
       }
 
@@ -117,6 +119,7 @@ router.post("/bulk", upload.single("file"), async (req, res) => {
       const status_KK_remarks = (row["Keterangan Tidak Aktif"] || "").toString().trim();
       const status_kepemilikan_rumah = (row["Status Kepemilikan Rumah"] || "").toString().trim();
       const menumpang_kk = (row["Menumpang pada KK:"] || "").toString().trim();
+      const kepemilikan_remarks = (row["Keterangan Kepemilikan"] || "").toString().trim();
 
       if (!kk_number || !full_address) {
         errors.push({ row: rowNumber, message: "Required fields missing." });
@@ -147,10 +150,19 @@ router.post("/bulk", upload.single("file"), async (req, res) => {
 
           const query = `
             INSERT INTO households (
-              kk_number, address_id, status_KK, status_kepemilikan_rumah, borrowed_from_kk, status_KK_remarks
-            ) VALUES (?, ?, ?, ?, ?, ?)
+              kk_number, address_id, status_KK, status_kepemilikan_rumah,
+              borrowed_from_kk, status_KK_remarks, kepemilikan_remarks
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
           `;
-          db.run(query, [kk_number, addr.id, status_KK, status_kepemilikan_rumah, menumpang_kk, status_KK_remarks], function (err) {
+          db.run(query, [
+            kk_number,
+            addr.id,
+            status_KK,
+            status_kepemilikan_rumah,
+            menumpang_kk || null,
+            status_KK === "tidak aktif" ? status_KK_remarks || "" : null,
+            status_kepemilikan_rumah !== "Pemilik" ? kepemilikan_remarks || "" : null
+          ], function (err) {
             if (err) {
               errors.push({ row: rowNumber, message: err.message });
             } else {

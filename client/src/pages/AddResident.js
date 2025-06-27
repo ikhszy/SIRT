@@ -31,10 +31,10 @@ export default function AddResident() {
   const [showKkDropdown, setShowKkDropdown] = useState(false);
   const [addresses, setAddresses] = useState([]);
   const [households, setHouseholds] = useState([]);
-  const [error, setError] = useState('');
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [selectedKKOwnership, setSelectedKKOwnership] = useState('');
   const [modal, setModal] = useState({ show: false, message: '', title: '', isSuccess: true });
   const navigate = useNavigate();
+  
 
   // New: Per-field validation errors
   const [fieldErrors, setFieldErrors] = useState({});
@@ -96,7 +96,11 @@ export default function AddResident() {
         kk_number: household.kk_number,
         address_id: household.address_id,
         address_text: address ? address.full_address : '',
+        status: household.status_kepemilikan_rumah === 'pemilik belum pindah'
+          ? 'tidak aktif - domisili diluar'
+          : prev.status,
       }));
+      setSelectedKKOwnership(household.status_kepemilikan_rumah);
     }
   };
 
@@ -283,7 +287,7 @@ export default function AddResident() {
                     onChange={handleChange}
                   >
                     <option value="">-- Pilih --</option>
-                    <option value="Laki-Laki">Laki-Laki</option>
+                    <option value="Laki - Laki">Laki-Laki</option>
                     <option value="Perempuan">Perempuan</option>
                   </select>
                   {fieldErrors.gender && (
@@ -462,19 +466,18 @@ export default function AddResident() {
                   className={inputClass('status')}
                   value={form.status}
                   onChange={handleChange}
+                  disabled={selectedKKOwnership === 'pemilik belum pindah'}
                 >
                   <option value="">-- Pilih --</option>
                   <option value="aktif">Aktif</option>
                   <option value="tidak aktif - meninggal">Tidak Aktif - Meninggal</option>
                   <option value="tidak aktif - pindah">Tidak Aktif - Pindah</option>
                   <option value="tidak aktif - lainnya">Tidak Aktif - Lainnya</option>
+                  <option value="tidak aktif - domisili diluar">Tidak Aktif - Domisili Diluar</option>
                 </select>
-                {fieldErrors.status && (
-                  <div className="invalid-feedback">{fieldErrors.status}</div>
-                )}
               </div>
               {/* show status remarks on lainnya option selected */}
-              {form.status === 'tidak aktif - lainnya' && (
+              {form.status === 'tidak aktif - lainnya' && selectedKKOwnership !== 'pemilik belum pindah' && (
                 <div className="mb-3">
                   <label className="form-label">Alasan Tidak Aktif</label>
                   <input
@@ -489,7 +492,6 @@ export default function AddResident() {
                   )}
                 </div>
               )}
-
               <button type="submit" className="btn btn-primary">
                 Add Resident
               </button>

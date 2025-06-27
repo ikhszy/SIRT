@@ -11,7 +11,8 @@ export default function EditHousehold() {
     address_id: '',
     status_KK: '',
     status_kepemilikan_rumah: '',
-    borrowed_from_kk: ''
+    borrowed_from_kk: '',
+    kepemilikan_remarks: ''
   });
   const [addresses, setAddresses] = useState([]);
   const [kkOptions, setKkOptions] = useState([]);
@@ -38,8 +39,9 @@ export default function EditHousehold() {
           status_KK: resHousehold.data.status_KK || '',
           status_KK_remarks: resHousehold.data.status_KK_remarks || '', 
           status_kepemilikan_rumah: resHousehold.data.status_kepemilikan_rumah || '',
-          borrowed_from_kk: resHousehold.data.borrowed_from_kk || ''
-        });
+          borrowed_from_kk: resHousehold.data.borrowed_from_kk || '',
+          kepemilikan_remarks: resHousehold.data.kepemilikan_remarks || ''
+        }); 
 
         setAddresses(resAddresses.data);
 
@@ -76,11 +78,11 @@ export default function EditHousehold() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (form.status_kepemilikan_rumah === 'borrowed' && !form.borrowed_from_kk) {
+    if (form.status_kepemilikan_rumah === 'numpang alamat' && !form.borrowed_from_kk) {
       setModal({
         show: true,
         title: 'Gagal',
-        message: 'Silakan isi nomor KK pemilik rumah jika status adalah "Menumpang".',
+        message: 'Silakan isi nomor KK pemilik rumah jika status adalah "Numpang Alamat".',
         isSuccess: false
       });
       return;
@@ -89,7 +91,8 @@ export default function EditHousehold() {
     try {
       const payload = {
         ...form,
-        borrowed_from_kk: form.status_kepemilikan_rumah === 'borrowed' ? form.borrowed_from_kk : null
+        borrowed_from_kk: form.status_kepemilikan_rumah === 'numpang alamat' ? form.borrowed_from_kk : null,
+        kepemilikan_remarks: form.status_kepemilikan_rumah !== 'pemilik' ? form.kepemilikan_remarks : null
       };
 
       await api.put(`/households/${kk_number}`, payload);
@@ -185,13 +188,27 @@ export default function EditHousehold() {
                 >
                   <option value="">-- Pilih Status Kepemilikan --</option>
                   <option value="pemilik">Pemilik</option>
+                  <option value="pemilik belum pindah">Pemilik (Belum pindah alamat)</option>
+                  <option value="numpang alamat">Numpang Alamat</option>
                   <option value="sewa">Kontrak / Sewa</option>
-                  <option value="borrowed">Menumpang</option>
-                  <option value="kost">Kost</option>
                 </select>
               </div>
 
-              {form.status_kepemilikan_rumah === 'borrowed' && (
+              {form.status_kepemilikan_rumah && form.status_kepemilikan_rumah !== 'pemilik' && (
+              <div className="mb-3">
+                <label className="form-label">Keterangan (Alamat Domisili Asal / Lainnya)</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="kepemilikan_remarks"
+                  value={form.kepemilikan_remarks}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            )}
+
+              {form.status_kepemilikan_rumah === 'numpang alamat' && (
                 <div className="mb-3">
                   <label className="form-label">Menumpang pada KK Nomor</label>
                   <Select

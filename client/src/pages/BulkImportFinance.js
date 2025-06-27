@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import AdminLayout from "../layouts/AdminLayout";
 import api from "../api";
+import ModalDialog from "../Components/ModalDialog";
 
 export default function FinanceImport() {
   const [file, setFile] = useState(null);
@@ -8,6 +9,7 @@ export default function FinanceImport() {
   const [errors, setErrors] = useState([]);
   const [inserted, setInserted] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [modal, setModal] = useState({ show: false, title: '', message: '', isSuccess: true });
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -17,41 +19,111 @@ export default function FinanceImport() {
   };
 
   const handlePreview = async () => {
-    if (!file) return alert("Please select an Excel file.");
+    if (!file) {
+      return setModal({
+        show: true,
+        title: 'Gagal',
+        message: 'Silakan pilih file Excel terlebih dahulu.',
+        isSuccess: false
+      });
+    }
+
     const formData = new FormData();
     formData.append("file", file);
     setLoading(true);
+
     try {
-      const res = await api.post("/finance-import/preview", formData);
-      if (res.data.success) {
-        setPreviewData(res.data.data);
-        setErrors([]);
-      } else {
-        alert("Preview failed");
+      const res = await api.post("/finance/import/preview", formData);
+      if (!res.data.success) {
+        return setModal({
+          show: true,
+          title: 'Gagal',
+          message: 'Preview gagal dilakukan.',
+          isSuccess: false
+        });
       }
+
+      const previewRows = res.data.data || [];
+      const errorsFromBackend = res.data.errors || [];
+
+      const addressIds = [...new Set(previewRows.map(r => r.addressId).filter(Boolean))];
+      let addressMap = {};
+
+      if (addressIds.length > 0) {
+        const allAddresses = await api.get("/address");
+        addressMap = Object.fromEntries(
+          allAddresses.data.map(addr => [addr.id, addr.full_address])
+        );
+      }
+
+      const enrichedPreview = previewRows.map(row => ({
+        ...row,
+        full_address: row.addressId ? addressMap[row.addressId] || "(Alamat tidak ditemukan)" : "-"
+      }));
+
+      setPreviewData(enrichedPreview);
+      setErrors(errorsFromBackend);
+
+      setModal({
+        show: true,
+        title: 'Preview Berhasil',
+        message: `Preview berhasil. Ditemukan ${previewRows.length} baris.`,
+        isSuccess: true
+      });
     } catch (err) {
-      alert("Error previewing file.");
+      console.error("Preview error:", err?.response || err);
+      setModal({
+        show: true,
+        title: 'Gagal',
+        message: 'Terjadi kesalahan saat melakukan preview file.',
+        isSuccess: false
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleImport = async () => {
-    if (!file) return alert("Please select an Excel file.");
+    if (!file) {
+      return setModal({
+        show: true,
+        title: 'Gagal',
+        message: 'Silakan pilih file Excel terlebih dahulu.',
+        isSuccess: false
+      });
+    }
+
     const formData = new FormData();
     formData.append("file", file);
     setLoading(true);
     try {
-      const res = await api.post("/finance-import/bulk", formData);
+      const res = await api.post("/finance/import/import", formData);
       if (res.data.success) {
         setInserted(res.data.inserted);
         setErrors(res.data.errors);
-        alert("Import complete");
+
+        setModal({
+          show: true,
+          title: 'Import Berhasil',
+          message: `Berhasil mengimpor ${res.data.inserted.length} baris.`,
+          isSuccess: true
+        });
       } else {
-        alert("Import failed");
+        setModal({
+          show: true,
+          title: 'Import Gagal',
+          message: 'Terjadi kesalahan saat mengimpor data.',
+          isSuccess: false
+        });
       }
     } catch (err) {
-      alert("Error during import.");
+      console.error("Import error:", err);
+      setModal({
+        show: true,
+        title: 'Gagal',
+        message: 'Terjadi kesalahan saat mengimpor file.',
+        isSuccess: false
+      });
     } finally {
       setLoading(false);
     }
@@ -97,18 +169,18 @@ export default function FinanceImport() {
                   <th>Jenis</th>
                   <th>Keterangan</th>
                   <th>Jumlah</th>
-                  <th>Warga ID</th>
+                  <th>Alamat</th>
                 </tr>
               </thead>
               <tbody>
                 {previewData.map((row, idx) => (
                   <tr key={idx}>
                     <td>{idx + 2}</td>
-                    <td>{row["Tanggal"]}</td>
-                    <td>{row["Jenis"]}</td>
-                    <td>{row["Keterangan"]}</td>
-                    <td>{row["Jumlah"]}</td>
-                    <td>{row["Warga ID"]}</td>
+                    <td>{row.transactionDate}</td>
+                    <td>{row.category}</td>
+                    <td>{row.remarks}</td>
+                    <td>{row.transactionAmount}</td>
+                    <td>{row.full_address}</td>
                   </tr>
                 ))}
               </tbody>
@@ -138,6 +210,14 @@ export default function FinanceImport() {
           </div>
         )}
       </div>
+
+      <ModalDialog
+        show={modal.show}
+        title={modal.title}
+        message={modal.message}
+        isSuccess={modal.isSuccess}
+        onClose={() => setModal(prev => ({ ...prev, show: false }))}
+      />
     </AdminLayout>
   );
 }

@@ -44,6 +44,8 @@ export default function EditResident() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const selectedHousehold = households.find(h => h.kk_number === form.kk_number);
+  const isStatusLocked = selectedHousehold?.status_kepemilikan_rumah === 'pemilik belum pindah';
 
   useEffect(() => {
   if (form.status !== 'tidak aktif - lainnya' && form.status_remarks) {
@@ -90,6 +92,17 @@ export default function EditResident() {
     const selectedHH = households.find(h => h.kk_number === form.kk_number);
     if (selectedHH) {
       setForm(prev => ({ ...prev, address_id: selectedHH.address_id }));
+    }
+  }, [form.kk_number, households]);
+
+  useEffect(() => {
+    const household = households.find(h => h.kk_number === form.kk_number);
+    if (household?.status_kepemilikan_rumah === 'pemilik belum pindah') {
+      setForm(prev => ({
+        ...prev,
+        status: 'tidak aktif - domisili diluar',
+        status_remarks: ''
+      }));
     }
   }, [form.kk_number, households]);
 
@@ -214,7 +227,7 @@ export default function EditResident() {
                   <label>Jenis Kelamin</label>
                   <select name="gender" className={inputClass('gender')} value={form.gender} onChange={handleChange} disabled={!isEditable}>
                     <option value="">-- Pilih --</option>
-                    <option value="Laki-Laki">Laki-Laki</option>
+                    <option value="Laki - Laki">Laki-Laki</option>
                     <option value="Perempuan">Perempuan</option>
                   </select>
                   {fieldErrors.gender && <div className="invalid-feedback">{fieldErrors.gender}</div>}
@@ -296,17 +309,24 @@ export default function EditResident() {
               </div>
 
               <div className="mb-3">
-                <label>Domisili</label>
-                <select name="status" className={inputClass('status')} value={form.status} onChange={handleChange} disabled={!isEditable}>
+                <label>Status NIK</label>
+                <select
+                  name="status"
+                  className={inputClass('status')}
+                  value={form.status}
+                  onChange={handleChange}
+                  disabled={!isEditable || isStatusLocked}
+                >
                   <option value="aktif">Aktif</option>
                   <option value="tidak aktif - meninggal">Tidak Aktif - Meninggal</option>
                   <option value="tidak aktif - pindah">Tidak Aktif - Pindah</option>
                   <option value="tidak aktif - lainnya">Tidak Aktif - Lainnya</option>
+                  <option value="tidak aktif - domisili diluar">Tidak Aktif - Domisili Diluar</option>
                 </select>
                 {fieldErrors.status && <div className="invalid-feedback">{fieldErrors.status}</div>}
               </div>
 
-              {form.status === 'tidak aktif - lainnya' && (
+              {form.status === 'tidak aktif - lainnya' && !isStatusLocked && (
                 <div className="mb-3">
                   <label>Alasan Tidak Aktif</label>
                   <input
@@ -316,9 +336,7 @@ export default function EditResident() {
                     onChange={handleChange}
                     disabled={!isEditable}
                   />
-                  {fieldErrors.status_remarks && (
-                    <div className="invalid-feedback">{fieldErrors.status_remarks}</div>
-                  )}
+                  {fieldErrors.status_remarks && <div className="invalid-feedback">{fieldErrors.status_remarks}</div>}
                 </div>
               )}
 

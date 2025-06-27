@@ -114,15 +114,17 @@ router.post("/preview", upload.single("file"), (req, res) => {
       return;
     }
 
-    db.get(`SELECT a.id, a.full_address FROM households h JOIN address a ON h.address_id = a.id WHERE h.kk_number = ?`, [data.kk_number], (err, row) => {
+    db.get(`SELECT h.status_kepemilikan_rumah, a.id, a.full_address FROM households h JOIN address a ON h.address_id = a.id WHERE h.kk_number = ?`, [data.kk_number], (err, row) => {
       if (err || !row) {
         errors.push({ row: rowNumber, message: `Alamat tidak ditemukan untuk KK: ${data.kk_number}` });
       } else {
+        const isOutsider = row.status_kepemilikan_rumah === 'pemilik belum pindah';
         preview.push({
           ...data,
+          status: isOutsider ? 'tidak aktif - domisili diluar' : data.status,
+          status_remarks: isOutsider ? '' : (data.status === 'tidak aktif - lainnya' ? data.status_remarks : ''),
           address_id: row.id,
           full_address: row.full_address,
-          status_remarks: data.status === "tidak aktif - lainnya" ? data.status_remarks : "",
           row: rowNumber
         });
       }
@@ -154,28 +156,27 @@ router.post("/bulk", upload.single("file"), async (req, res) => {
       errors.push({ row: rowNumber, message: "Kolom wajib kosong (Nama, NIK, KK)" });
       return resolve();
     }
-    if (data.status === "tidak aktif - lainnya" && !data.status_remarks) {
-      errors.push({ row: rowNumber, message: "Alasan tidak aktif wajib diisi untuk status tersebut." });
-      return resolve();
-    }
 
     db.get("SELECT id FROM residents WHERE nik = ?", [data.nik], (err, found) => {
       if (err || found) {
         errors.push({ row: rowNumber, message: found ? "NIK sudah terdaftar" : "DB error saat cek NIK" });
         return resolve();
       }
-      db.get(`SELECT a.id FROM households h JOIN address a ON h.address_id = a.id WHERE h.kk_number = ?`, [data.kk_number], (err, addr) => {
+      db.get(`SELECT h.status_kepemilikan_rumah, a.id FROM households h JOIN address a ON h.address_id = a.id WHERE h.kk_number = ?`, [data.kk_number], (err, addr) => {
         if (err || !addr) {
           errors.push({ row: rowNumber, message: `Alamat tidak ditemukan untuk KK: ${data.kk_number}` });
           return resolve();
         }
 
+        const isOutsider = addr.status_kepemilikan_rumah === 'pemilik belum pindah';
+        const status = isOutsider ? 'tidak aktif - domisili diluar' : data.status;
+        const status_remarks = isOutsider ? '' : (data.status === 'tidak aktif - lainnya' ? data.status_remarks : null);
+
         const query = `INSERT INTO residents (full_name, nik, kk_number, gender, birthplace, birthdate, blood_type, religion, marital_status, relationship, education, occupation, citizenship, address_id, status, status_remarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
         const values = [
           data.full_name, data.nik, data.kk_number, data.gender, data.birthplace, data.birthdate,
           data.blood_type, data.religion, data.marital_status, data.relationship,
-          data.education, data.occupation, data.citizenship, addr.id, data.status,
-          data.status === "tidak aktif - lainnya" ? data.status_remarks : null
+          data.education, data.occupation, data.citizenship, addr.id, status, status_remarks
         ];
 
         db.run(query, values, function (err) {

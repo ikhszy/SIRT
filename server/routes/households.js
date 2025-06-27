@@ -46,35 +46,43 @@ router.post("/", authMiddleware, async (req, res) => {
       status_KK,
       status_KK_remarks,
       status_kepemilikan_rumah,
-      borrowed_from_kk
+      borrowed_from_kk,
+      kepemilikan_remarks
     } = req.body;
 
-    if (status_kepemilikan_rumah === "borrowed" && !borrowed_from_kk) {
-      return res.status(400).json({ error: "borrowed_from_kk is required when status_kepemilikan_rumah is 'borrowed'" });
+    if (status_kepemilikan_rumah === "numpang alamat" && !borrowed_from_kk) {
+      return res.status(400).json({ error: "borrowed_from_kk is required when status_kepemilikan_rumah is 'numpang alamat'" });
     }
 
     const sql = `
-      INSERT INTO households (kk_number, address_id, status_KK, status_KK_remarks, status_kepemilikan_rumah, borrowed_from_kk)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO households (
+        kk_number, address_id, status_KK, status_KK_remarks,
+        status_kepemilikan_rumah, borrowed_from_kk, kepemilikan_remarks
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
+
     await db.run(sql, [
       kk_number,
       address_id,
       status_KK,
       status_KK === "tidak aktif" ? status_KK_remarks || "" : null,
       status_kepemilikan_rumah,
-      borrowed_from_kk || null
+      borrowed_from_kk || null,
+      status_kepemilikan_rumah !== "pemilik" ? kepemilikan_remarks || "" : null
     ]);
 
-    // Auto-update resident status if KK is not active
+    // Auto-update resident statuses
     if (status_KK === "tidak aktif") {
-      const updateResSql = `
-        UPDATE residents
-        SET status = 'tidak aktif - lainnya',
-            status_remarks = ?
-        WHERE kk_number = ?
-      `;
-      await db.run(updateResSql, [status_KK_remarks || 'KK tidak aktif', kk_number]);
+      await db.run(
+        `UPDATE residents SET status = 'tidak aktif - lainnya', status_remarks = ? WHERE kk_number = ?`,
+        [status_KK_remarks || 'KK tidak aktif', kk_number]
+      );
+    } else if (status_kepemilikan_rumah === "pemilik belum pindah") {
+      await db.run(
+        `UPDATE residents SET status = 'tidak aktif - domisili diluar', status_remarks = 'Pemilik belum pindah alamat' WHERE kk_number = ?`,
+        [kk_number]
+      );
     }
 
     res.status(201).json({ message: "Household created" });
@@ -92,24 +100,33 @@ router.put("/:kk_number", authMiddleware, async (req, res) => {
       status_KK,
       status_KK_remarks,
       status_kepemilikan_rumah,
-      borrowed_from_kk
+      borrowed_from_kk,
+      kepemilikan_remarks
     } = req.body;
 
-    if (status_kepemilikan_rumah === "borrowed" && !borrowed_from_kk) {
-      return res.status(400).json({ error: "borrowed_from_kk is required when status_kepemilikan_rumah is 'borrowed'" });
+    if (status_kepemilikan_rumah === "numpang alamat" && !borrowed_from_kk) {
+      return res.status(400).json({ error: "borrowed_from_kk is required when status_kepemilikan_rumah is 'numpang alamat'" });
     }
 
     const sql = `
       UPDATE households
-      SET address_id = ?, status_KK = ?, status_KK_remarks = ?, status_kepemilikan_rumah = ?, borrowed_from_kk = ?
+      SET
+        address_id = ?,
+        status_KK = ?,
+        status_KK_remarks = ?,
+        status_kepemilikan_rumah = ?,
+        borrowed_from_kk = ?,
+        kepemilikan_remarks = ?
       WHERE kk_number = ?
     `;
+
     const result = await db.run(sql, [
       address_id,
       status_KK,
       status_KK === "tidak aktif" ? status_KK_remarks || "" : null,
       status_kepemilikan_rumah,
       borrowed_from_kk || null,
+      status_kepemilikan_rumah !== "pemilik" ? kepemilikan_remarks || "" : null,
       req.params.kk_number
     ]);
 
@@ -117,15 +134,17 @@ router.put("/:kk_number", authMiddleware, async (req, res) => {
       return res.status(404).json({ error: "Household not found" });
     }
 
-    // Auto-update resident status if KK is not active
+    // Auto-update resident statuses
     if (status_KK === "tidak aktif") {
-      const updateResSql = `
-        UPDATE residents
-        SET status = 'tidak aktif - lainnya',
-            status_remarks = ?
-        WHERE kk_number = ?
-      `;
-      await db.run(updateResSql, [status_KK_remarks || 'KK tidak aktif', req.params.kk_number]);
+      await db.run(
+        `UPDATE residents SET status = 'tidak aktif - lainnya', status_remarks = ? WHERE kk_number = ?`,
+        [status_KK_remarks || 'KK tidak aktif', req.params.kk_number]
+      );
+    } else if (status_kepemilikan_rumah === "pemilik belum pindah") {
+      await db.run(
+        `UPDATE residents SET status = 'tidak aktif - domisili diluar', status_remarks = 'Pemilik belum pindah alamat' WHERE kk_number = ?`,
+        [req.params.kk_number]
+      );
     }
 
     res.json({ message: "Household updated" });

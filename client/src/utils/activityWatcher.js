@@ -2,7 +2,7 @@ let warningTimer;
 let logoutTimer;
 let isWarningShown = false;
 
-export function startInactivityWatcher(timeout = 1800000, warningBefore = 300000) {
+export function startInactivityWatcher(timeout = 3600000, warningBefore = 300000) {
   const warningTime = timeout - warningBefore;
 
   const clearTimers = () => {
@@ -26,7 +26,8 @@ export function startInactivityWatcher(timeout = 1800000, warningBefore = 300000
     logoutTimer = setTimeout(() => {
       localStorage.removeItem("token");
       localStorage.removeItem("loginTime");
-      window.location.href = "/";
+      hideInactivityWarning();
+      window.dispatchEvent(new CustomEvent("sessionExpired"));
     }, timeout);
   };
 

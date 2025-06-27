@@ -17,6 +17,33 @@ const formatDateForFilter = (dateStr) => {
   return `${d.getFullYear()}-${month}-${day}`; // YYYY-MM-DD
 };
 
+function normalizeAddress(address) {
+  return (address || "")
+    .toString()
+    .normalize("NFKC")
+    .replace(/\s+/g, " ")
+    .replace(/[\r\n\t]/g, "")
+    .replace(/\u00A0/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+const resolveAddressId = (() => {
+  const cache = new Map();
+  return async (normalized) => {
+    if (cache.has(normalized)) return cache.get(normalized);
+
+    return new Promise((resolve, reject) => {
+      db.get(`SELECT id FROM address WHERE LOWER(TRIM(full_address)) = ?`, [normalized], (err, row) => {
+        if (err) return reject(err);
+        const result = row?.id || null;
+        cache.set(normalized, result);
+        resolve(result);
+      });
+    });
+  };
+})();
+
 // --- INCOME ---
 
 exports.getAllIncome = (req, res) => {
@@ -475,57 +502,112 @@ exports.financeReport = (req, res) => {
 };
 
 // --- PREVIEW UPLOAD ---
-
 exports.previewFinanceImport = [
   upload.single("file"),
-  (req, res) => {
+  async (req, res) => {
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
 
-    const workbook = xlsx.read(req.file.buffer);
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const data = xlsx.utils.sheet_to_json(sheet);
+    try {
+      console.time("finance-preview");
+      const workbook = xlsx.read(req.file.buffer);
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const data = xlsx.utils.sheet_to_json(sheet);
 
-    const errors = [];
-    const preview = [];
+      const errors = [];
+      const preview = [];
 
-    data.forEach((row, index) => {
-      const type = (row["Type"] || "").toLowerCase();
-      const amount = parseFloat(row["Amount"]);
-      const dateRaw = row["Date"];
-      const date = new Date(dateRaw);
-      const remarks = row["Remarks"] || "";
-      const residentId = row["Resident ID"] || null;
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        const rowNum = i + 2;
 
-      if (!type || !["income", "expense"].includes(type)) {
-        errors.push({ row: index + 2, message: "Invalid Type", data: row });
-        return;
+        const {
+          Tanggal: tanggal,
+          Kategori: kategori,
+          Nominal: nominal,
+          Keterangan: keterangan,
+          "Jenis Pendapatan": jenisPendapatan,
+          Bulan: bulan,
+          Alamat: alamat,
+        } = row;
+
+        let error = null;
+
+        // === Validation ===
+
+        // 1. Tanggal (DD/MM/YYYY)
+        const dateParts = (tanggal || "").split("/");
+        const isValidDate =
+          dateParts.length === 3 &&
+          !isNaN(new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`));
+        if (!isValidDate) {
+          error = "Tanggal tidak valid. Format harus DD/MM/YYYY";
+        }
+
+        // 2. Kategori
+        else if (!["Pendapatan", "Pengeluaran"].includes(kategori)) {
+          error = "Kategori harus 'Pendapatan' atau 'Pengeluaran'";
+        }
+
+        // 3. Nominal
+        else if (typeof nominal !== "number" || isNaN(nominal)) {
+          error = "Nominal harus berupa angka tanpa titik/koma";
+        }
+
+        // 4. Jenis Pendapatan (if Pendapatan)
+        else if (kategori === "Pendapatan" && !["Iuran", "Lainnya"].includes(jenisPendapatan)) {
+          error = "Jenis Pendapatan wajib diisi (Iuran/Lainnya)";
+        }
+
+        let addressId = null;
+
+        if (!error && kategori === "Pendapatan" && jenisPendapatan === "Iuran") {
+          // 5. Bulan
+          if (!bulan || !/^\d{4}-\d{2}$/.test(bulan)) {
+            error = "Bulan wajib diisi dengan format YYYY-MM";
+          }
+
+          // 6. Alamat
+          else if (!alamat || typeof alamat !== "string" || !alamat.trim()) {
+            error = "Alamat wajib diisi untuk jenis Iuran";
+          } else {
+            const key = normalizeAddress(alamat);
+            addressId = await resolveAddressId(key);
+
+            if (!addressId) {
+              error = `Alamat tidak ditemukan: ${alamat}`;
+            }
+          }
+        }
+
+        if (error) {
+          errors.push({ row: rowNum, message: error });
+          continue;
+        }
+
+        const transactionDate = new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`)
+          .toISOString()
+          .split("T")[0];
+
+        preview.push({
+          row: rowNum,
+          transactionDate,
+          transactionAmount: nominal,
+          remarks: keterangan || "",
+          category: kategori,
+          incomeType: jenisPendapatan || "",
+          months: jenisPendapatan === "Iuran" ? [bulan] : [],
+          addressId,
+        });
       }
-
-      if (!amount || isNaN(amount)) {
-        errors.push({ row: index + 2, message: "Invalid Amount", data: row });
-        return;
-      }
-
-      if (!dateRaw || isNaN(date)) {
-        errors.push({ row: index + 2, message: "Invalid Date", data: row });
-        return;
-      }
-
-      preview.push({
-        type,
-        transactionAmount: amount,
-        transactionDate: date.toISOString().split('T')[0],
-        remarks,
-        residentId
-      });
-    });
-
-    return res.json({ success: true, data: preview, errors });
-  }
+      return res.json({ success: true, data: preview, errors });
+    } catch (err) {
+      console.error("💥 Error in previewFinanceImport:", err);
+      return res.status(500).json({ success: false, message: "Server error during preview" });
+    }
+  },
 ];
 
 // --- IMPORT TO DB ---
-
 exports.bulkFinanceImport = [
   upload.single("file"),
   (req, res) => {
@@ -533,110 +615,141 @@ exports.bulkFinanceImport = [
 
     const workbook = xlsx.read(req.file.buffer);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const data = xlsx.utils.sheet_to_json(sheet);
+    const rows = xlsx.utils.sheet_to_json(sheet);
 
     const now = getNow();
     const inserted = [];
     const errors = [];
 
-    const insertNext = (index) => {
-      if (index >= data.length) {
+    const insertNext = (i) => {
+      if (i >= rows.length) {
         return res.json({ success: true, inserted, errors });
       }
 
-      const row = data[index];
+      const row = rows[i];
+      const rowNum = i + 2;
+
       const tanggalStr = row["Tanggal"];
-      const kategori = (row["Kategori"] || "").toLowerCase();
+      const kategori = (row["Kategori"] || "").toLowerCase(); // pendapatan / pengeluaran
       const amount = parseFloat(row["Nominal"]);
       const remarks = row["Keterangan"] || "";
-      const jenisPendapatan = row["Jenis Pendapatan"]?.trim();
-      const bulanStr = row["Bulan"] || "";
-      const addressText = row["Alamat"]?.trim();
+      const jenisPendapatan = (row["Jenis Pendapatan"] || "").trim().toLowerCase();
+      const alamatStr = row["Alamat"] || "";
 
-      const dateParts = tanggalStr?.split("-");
-      const tanggal = dateParts?.length === 3 ? new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`) : null;
-      const formattedDate = tanggal?.toISOString().split("T")[0];
+      // Parse and validate date
+      const dateParts = tanggalStr?.split("/");
+      let formattedDate = null;
+      if (dateParts?.length === 3) {
+        const d = new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`);
+        if (!isNaN(d)) formattedDate = d.toISOString().split("T")[0];
+      }
+
+      // Auto-generate bulan from tanggal
+      const rawBulan = (row["Bulan"] || "").trim();
+      let bulanStr = "";
+
+      if (/^\d{4}-\d{2}$/.test(rawBulan)) {
+        bulanStr = rawBulan;
+      } else if (formattedDate) {
+        bulanStr = formattedDate.slice(0, 7); // fallback to YYYY-MM
+      }
 
       if (!["pendapatan", "pengeluaran"].includes(kategori) || isNaN(amount) || !formattedDate) {
-        errors.push({ row: index + 2, message: "Invalid fields", data: row });
-        return insertNext(index + 1);
+        errors.push({ row: rowNum, message: "Data tidak valid (tanggal/kategori/nominal)!", data: row });
+        return insertNext(i + 1);
       }
 
       const isIncome = kategori === "pendapatan";
-      const isIuran = jenisPendapatan?.toLowerCase() === "iuran";
+      const isIuran = jenisPendapatan === "iuran";
 
       const proceedInsert = (addressId = null) => {
-        const dupCheckSql = isIncome
+        const checkDupSql = isIncome
           ? `SELECT id FROM income WHERE transactionDate = ? AND transactionAmount = ? AND remarks = ? AND status = 'A'`
           : `SELECT id FROM expense WHERE transactionDate = ? AND transactionAmount = ? AND remarks = ? AND status = 'A'`;
 
-        db.get(dupCheckSql, [formattedDate, amount, remarks], (err, existing) => {
+        db.get(checkDupSql, [formattedDate, amount, remarks], (err, existing) => {
           if (err) {
-            errors.push({ row: index + 2, message: err.message, data: row });
-            return insertNext(index + 1);
+            errors.push({ row: rowNum, message: err.message, data: row });
+            return insertNext(i + 1);
           }
 
           if (existing) {
-            errors.push({ row: index + 2, message: "Duplicate record", data: row });
-            return insertNext(index + 1);
+            errors.push({ row: rowNum, message: "Data duplikat (sudah ada)", data: row });
+            return insertNext(i + 1);
           }
 
-          // INSERT INCOME or EXPENSE
           const insertSql = isIncome
             ? `INSERT INTO income (residentId, addressId, remarks, transactionAmount, transactionDate, date_created, date_modified, status)
                VALUES (?, ?, ?, ?, ?, ?, ?, 'A')`
             : `INSERT INTO expense (remarks, transactionAmount, transactionDate, date_created, date_modified, status)
                VALUES (?, ?, ?, ?, ?, 'A')`;
 
-          const insertParams = isIncome
+          const params = isIncome
             ? [null, addressId, remarks, amount, formattedDate, now, now]
             : [remarks, amount, formattedDate, now, now];
 
-          db.run(insertSql, insertParams, function (err) {
+          db.run(insertSql, params, function (err) {
             if (err) {
-              errors.push({ row: index + 2, message: err.message, data: row });
-              return insertNext(index + 1);
+              errors.push({ row: rowNum, message: err.message, data: row });
+              return insertNext(i + 1);
             }
 
-            // INSERT INTO donation_history if Iuran
-            if (isIncome && isIuran && addressId && bulanStr) {
-              const donationMonth = bulanStr.trim(); // format: MM-YYYY
-              const dupDonationSql = `SELECT id FROM donation_history WHERE address_id = ? AND bulan = ?`;
+            const incomeId = this.lastID;
 
-              db.get(dupDonationSql, [addressId, donationMonth], (err, found) => {
-                if (!err && !found) {
+            const pushAndContinue = () => {
+              inserted.push({ row: rowNum, id: incomeId });
+              insertNext(i + 1);
+            };
+
+            if (isIncome && isIuran && addressId && bulanStr) {
+              db.get(
+                `SELECT id FROM donation_history WHERE address_id = ? AND month = ?`,
+                [addressId, bulanStr],
+                (err, found) => {
+                  if (err) {
+                    errors.push({ row: rowNum, message: "Gagal cek donation: " + err.message, data: row });
+                    return pushAndContinue();
+                  }
+
+                  if (found) return pushAndContinue();
+
                   db.run(
-                    `INSERT INTO donation_history (address_id, bulan, created_at) VALUES (?, ?, ?)`,
-                    [addressId, donationMonth, now],
-                    () => {} // silent insert, no wait
+                    `INSERT INTO donation_history (address_id, month, amount, date_paid, status, income_id, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, 'A', ?, ?, ?)`,
+                    [addressId, bulanStr, amount, formattedDate, incomeId, now, now],
+                    (err) => {
+                      if (err) {
+                        errors.push({ row: rowNum, message: "Gagal insert donation: " + err.message, data: row });
+                      }
+                      pushAndContinue();
+                    }
                   );
                 }
-                inserted.push({ row: index + 2, id: this.lastID });
-                insertNext(index + 1);
-              });
+              );
             } else {
-              inserted.push({ row: index + 2, id: this.lastID });
-              insertNext(index + 1);
+              pushAndContinue();
             }
           });
         });
       };
 
-      // Resolve addressId if needed
+      // Resolve address if income & iuran
       if (isIncome && isIuran) {
-        if (!addressText) {
-          errors.push({ row: index + 2, message: "Alamat kosong untuk Iuran", data: row });
-          return insertNext(index + 1);
+        if (!alamatStr) {
+          errors.push({ row: rowNum, message: "Alamat kosong untuk Iuran", data: row });
+          return insertNext(i + 1);
         }
-        db.get(`SELECT id FROM address WHERE full_address = ?`, [addressText], (err, row) => {
-          if (err || !row) {
-            errors.push({ row: index + 2, message: "Alamat tidak ditemukan", data: row });
-            return insertNext(index + 1);
+
+        const normalized = normalizeAddress(alamatStr);
+        db.get(`SELECT id FROM address WHERE LOWER(full_address) = ?`, [normalized], (err, addr) => {
+          if (err || !addr) {
+            errors.push({ row: rowNum, message: "Alamat tidak ditemukan", data: row });
+            return insertNext(i + 1);
           }
-          proceedInsert(row.id);
+          proceedInsert(addr.id);
         });
       } else {
-        proceedInsert(); // no address needed
+        proceedInsert();
       }
     };
 

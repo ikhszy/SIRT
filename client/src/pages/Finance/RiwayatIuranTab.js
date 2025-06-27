@@ -29,9 +29,15 @@ export default function RiwayatIuranTab({ prefilledFilters }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
 
+  // Fetch available addresses on mount
+  useEffect(() => {
+    api.get('/address').then(res => setAddresses(res.data)).catch(() => {});
+  }, []);
+
+  // Prefill filters on first mount if available
   useEffect(() => {
     if (prefilledFilters && !hasPrefilled) {
       const { bulan, tahun, alamat } = prefilledFilters;
@@ -40,15 +46,11 @@ export default function RiwayatIuranTab({ prefilledFilters }) {
       if (tahun) setSelectedYear(String(tahun));
       if (alamat) setSelectedAddress(alamat);
 
-      // wait one tick after state set, then trigger search
-      setTimeout(() => {
-        handleSearch();
-      }, 0);
-
       setHasPrefilled(true);
     }
   }, [prefilledFilters, hasPrefilled]);
 
+  // Trigger search once filters are filled
   useEffect(() => {
     if (hasPrefilled && selectedMonth && selectedYear) {
       handleSearch();
@@ -60,6 +62,7 @@ export default function RiwayatIuranTab({ prefilledFilters }) {
       setError('Silakan pilih bulan dan tahun terlebih dahulu.');
       return;
     }
+
     setError('');
     setLoading(true);
 
@@ -68,13 +71,12 @@ export default function RiwayatIuranTab({ prefilledFilters }) {
         params: {
           month: selectedMonth.toString().padStart(2, '0'),
           year: selectedYear,
-          // optionally include address filter if needed, e.g.
           addressId: selectedAddress || undefined,
         },
       });
       setData(res.data);
       setTotalItems(res.data.length);
-    } catch (e) {
+    } catch {
       setError('Gagal mengambil data iuran.');
       setData([]);
       setTotalItems(0);
@@ -83,18 +85,16 @@ export default function RiwayatIuranTab({ prefilledFilters }) {
     }
   };
 
-  // Handle page change
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
-    // Trigger search again for new page
-    handleSearch();
+    handleSearch(); // re-fetch data (you could paginate server-side here too)
   };
+
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   return (
     <div>
       <div className="row g-3 mb-3">
-        {/* Address dropdown */}
         <div className="col-md-4">
           <label htmlFor="address" className="form-label">Alamat</label>
           <select
@@ -112,7 +112,6 @@ export default function RiwayatIuranTab({ prefilledFilters }) {
           </select>
         </div>
 
-        {/* Month dropdown */}
         <div className="col-md-3">
           <label htmlFor="month" className="form-label">Bulan</label>
           <select
@@ -123,14 +122,11 @@ export default function RiwayatIuranTab({ prefilledFilters }) {
           >
             <option value="">-- Pilih Bulan --</option>
             {MONTHS.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
+              <option key={m.value} value={m.value}>{m.label}</option>
             ))}
           </select>
         </div>
 
-        {/* Year dropdown */}
         <div className="col-md-3">
           <label htmlFor="year" className="form-label">Tahun</label>
           <select
@@ -141,25 +137,25 @@ export default function RiwayatIuranTab({ prefilledFilters }) {
           >
             <option value="">-- Pilih Tahun --</option>
             {yearOptions.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
+              <option key={y} value={y}>{y}</option>
             ))}
           </select>
         </div>
 
         <div className="col-md-2 d-flex align-items-end">
-          <button className="btn btn-primary w-100" onClick={() => {
-            setCurrentPage(1); // reset page to 1 on new search
-            handleSearch();
-          }}>
+          <button
+            className="btn btn-primary w-100"
+            onClick={() => {
+              setCurrentPage(1);
+              handleSearch();
+            }}
+          >
             Cari
           </button>
         </div>
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
-
       {loading && <div>Loading...</div>}
 
       {!loading && data.length === 0 && !error && (
@@ -179,8 +175,8 @@ export default function RiwayatIuranTab({ prefilledFilters }) {
                 </tr>
               </thead>
               <tbody>
-                {data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((item, index) => (
-                  <tr key={index}>
+                {data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((item, i) => (
+                  <tr key={i}>
                     <td>{item.address}</td>
                     <td>
                       {item.status === 'paid' ? (
@@ -205,24 +201,15 @@ export default function RiwayatIuranTab({ prefilledFilters }) {
             <nav>
               <ul className="pagination mb-0">
                 <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={() => handlePageChange(currentPage - 1)}>
-                    &laquo;
-                  </button>
+                  <button className="page-link" onClick={() => handlePageChange(currentPage - 1)}>&laquo;</button>
                 </li>
-                {Array.from({ length: Math.ceil(totalItems / itemsPerPage) }, (_, i) => (
-                  <li
-                    key={i + 1}
-                    className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}
-                  >
-                    <button className="page-link" onClick={() => handlePageChange(i + 1)}>
-                      {i + 1}
-                    </button>
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <li key={i + 1} className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}>
+                    <button className="page-link" onClick={() => handlePageChange(i + 1)}>{i + 1}</button>
                   </li>
                 ))}
                 <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={() => handlePageChange(currentPage + 1)}>
-                    &raquo;
-                  </button>
+                  <button className="page-link" onClick={() => handlePageChange(currentPage + 1)}>&raquo;</button>
                 </li>
               </ul>
             </nav>

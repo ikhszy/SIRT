@@ -61,7 +61,11 @@ const AddFinance = () => {
         months: formData.jenisPendapatan === 'Iuran' && formData.bulan ? [formData.bulan] : [],
       };
 
-      await axios.post('/api/finance/income', payload, {
+      const endpoint = formData.kategori === 'Pendapatan'
+        ? '/api/finance/income'
+        : '/api/finance/expense';
+
+      await axios.post(endpoint, payload, {
         headers: { Authorization: token },
       });
 
@@ -155,7 +159,6 @@ const AddFinance = () => {
                   name="nominal"
                   value={formData.nominal}
                   onChange={handleChange}
-                  disabled={formData.kategori === 'Pendapatan' && formData.jenisPendapatan === 'Iuran'}
                   required
                 />
               </div>
