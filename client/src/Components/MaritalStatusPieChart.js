@@ -61,7 +61,7 @@ export default function MaritalStatusPieChart({ residents }) {
 
   return (
     <div className="card p-3 h-100" style={{ minHeight: '240px' }}>
-      <h6 className="mb-3">💍 Berdasarkan Status Perkawinan</h6>
+      <h6 className="mb-3">💍 Status Perkawinan</h6>
       <div style={{ display: 'flex', alignItems: 'center' }}>
         <div style={{ width: '100%', maxHeight: '150px' }}>
           <Pie ref={chartRef} data={data} options={options} onClick={onClick} />

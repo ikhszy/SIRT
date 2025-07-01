@@ -410,13 +410,22 @@ export default function AddResident() {
                 </div>
                 <div className="col-md-4 mb-3">
                   <label className="form-label">Pendidikan Terakhir</label>
-                  <input
-                    name="education"
-                    className={inputClass('education')}
-                    value={form.education}
-                    onChange={handleChange}
-                    autoComplete="off"
-                  />
+                  <select
+                  name="education"
+                  className={inputClass('education')}
+                  value={form.education}
+                  onChange={handleChange}
+                >
+                  <option value="">-- Pilih --</option>
+                  <option value="tidak">Tidak/Belum Sekolah</option>
+                  <option value="sd">SD/Setara SD</option>
+                  <option value="sltp">SLTP/Setara SLTP</option>
+                  <option value="sma">SLTA/Setara SLTA</option>
+                  <option value="d3">D-III</option>
+                  <option value="s1">D-IV / S1</option>
+                  <option value="s2">S2</option>
+                  <option value="s3">S3</option>
+                </select>
                   {/* Education optional? No error */}
                 </div>
                 <div className="col-md-4 mb-3">

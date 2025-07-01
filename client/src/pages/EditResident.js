@@ -287,7 +287,23 @@ export default function EditResident() {
                 </div>
                 <div className="col-md-4 mb-3">
                   <label>Pendidikan Terakhir</label>
-                  <input name="education" className="form-control" value={form.education} onChange={handleChange} disabled={!isEditable} />
+                  <select
+                  name="education"
+                  className={inputClass('education')}
+                  value={form.education}
+                  onChange={handleChange}
+                  disabled={!isEditable}
+                >
+                  <option value="">-- Pilih --</option>
+                  <option value="tidak">Tidak/Belum Sekolah</option>
+                  <option value="sd">SD/Setara SD</option>
+                  <option value="sltp">SLTP/Setara SLTP</option>
+                  <option value="sma">SLTA/Setara SLTA</option>
+                  <option value="d3">D-III</option>
+                  <option value="s1">D-IV / S1</option>
+                  <option value="s2">S2</option>
+                  <option value="s3">S3</option>
+                </select>
                 </div>
                 <div className="col-md-4 mb-3">
                   <label>Pekerjaan</label>

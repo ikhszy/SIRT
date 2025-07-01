@@ -139,18 +139,17 @@ export default function Households() {
                     </tr>
                   ) : (
                     paginated.map((h) => (
-                      <tr key={h.kk_number}>
+                      <tr
+                        key={h.kk_number}
+                        className="clickable-row"
+                        onClick={() => navigate(`/households/view/${h.kk_number}`)}
+                        style={{ cursor: 'pointer' }}
+                      >
                         <td>{h.kk_number}</td>
                         <td>{h.full_address || '-'}</td>
                         <td>{h.status_KK === 'tidak aktif' ? 'Tidak Aktif' : 'Aktif'}</td>
                         <td>{ownershipLabels[h.status_kepemilikan_rumah] || '-'}</td>
                         <td>
-                          <button
-                            className="btn btn-sm btn-warning me-2"
-                            onClick={() => navigate(`/households/edit/${h.kk_number}`)}
-                          >
-                            <i className="fas fa-edit"></i>
-                          </button>
                           <button
                             className="btn btn-sm btn-danger"
                             onClick={() => handleDelete(h.kk_number)}

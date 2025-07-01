@@ -60,7 +60,7 @@ export default function GenderPieChart({ residents }) {
 
   return (
     <div className="card p-3 h-100" style={{ minHeight: '240px' }}>
-      <h6 className="mb-3">🧑‍🤝‍🧑 Berdasarkan Jenis Kelamin</h6>
+      <h6 className="mb-3">🧑‍🤝‍🧑 Jenis Kelamin</h6>
       <div style={{ display: 'flex', alignItems: 'center' }}>
         <div style={{ width: '100%', maxHeight: '150px' }}>
           <Pie ref={chartRef} data={data} options={options} onClick={onClick} />

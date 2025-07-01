@@ -70,6 +70,7 @@ const AppRoutes = () => {
       <Route path="/residents/import" element={<ProtectedRoute><BulkImportResidents /></ProtectedRoute>} />
 
       <Route path="/households" element={<ProtectedRoute><Households /></ProtectedRoute>} />
+      <Route path="/households/view/:kk_number" element={<ProtectedRoute><EditHousehold /></ProtectedRoute>} />
       <Route path="/households/edit/:kk_number" element={<ProtectedRoute><EditHousehold /></ProtectedRoute>} />
       <Route path="/households/add" element={<ProtectedRoute><AddHousehold /></ProtectedRoute>} />
 

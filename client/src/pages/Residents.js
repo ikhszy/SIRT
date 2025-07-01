@@ -153,9 +153,6 @@ export default function Residents() {
                     <th>NIK</th>
                     <th>Alamat</th>
                     <th>Jenis Kelamin</th>
-                    <th>Tempat Lahir</th>
-                    <th>Tanggal Lahir</th>
-                    <th>No. KK</th>
                     <th>Status NIK</th>
                     <th>Actions</th>
                   </tr>
@@ -172,9 +169,6 @@ export default function Residents() {
                         <td>{res.nik}</td>
                         <td>{res.full_address}</td>
                         <td>{res.gender}</td>
-                        <td>{res.birthplace}</td>
-                        <td>{res.birthdate}</td>
-                        <td>{res.kk_number}</td>
                         <td>{res.status}</td>
                         <td onClick={(e) => e.stopPropagation()}>
                           <button
