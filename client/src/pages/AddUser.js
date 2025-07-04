@@ -11,7 +11,8 @@ export default function AddUser() {
     password: '',
     role: ''
   });
-  const [modal, setModal] = useState({ show: false, title: '', message: '', isSuccess: true });
+  const [errors, setErrors] = useState({});
+  const [toast, setToast] = useState({ show: false, message: '', isSuccess: true });
 
   const handleChange = (e) => {
     setFormData(prev => ({
@@ -22,7 +23,7 @@ export default function AddUser() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    setErrors({});
     try {
       const token = localStorage.getItem('token');
       await axios.post('/api/users', formData, {
@@ -31,75 +32,104 @@ export default function AddUser() {
         }
       });
 
-      setModal({
+      setToast({
         show: true,
-        title: 'Sukses',
         message: 'Pengguna berhasil ditambahkan!',
         isSuccess: true
       });
 
-      setTimeout(() => {
-        navigate('/users');
-      }, 1500);
+      setTimeout(() => navigate('/users'), 1500);
     } catch (err) {
-      setModal({
+      const msg = err.response?.data?.error || 'Terjadi kesalahan saat menambahkan pengguna';
+
+      setToast({
         show: true,
-        title: 'Gagal',
-        message: err.response?.data?.error || 'Terjadi kesalahan saat menambahkan pengguna',
+        message: msg,
         isSuccess: false
       });
+
+      // Optional: handle server-side validation structure
+      if (err.response?.data?.fields) {
+        setErrors(err.response.data.fields); // if backend sends field-level errors
+      }
     }
   };
 
   return (
     <AdminLayout>
-      <div className="card p-4">
-        <h3 className="mb-3">Tambah Pengguna</h3>
+      <div className="container-fluid px-4">
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h1 className="h3 text-gray-800">
+            <i className="fas fa-user-shield me-2"></i> Tambah Pengguna
+          </h1>
+          <a href="/users" className="btn btn-warning">
+            <i className="fas fa-arrow-left me-1"></i> Kembali
+          </a>
+        </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <label>Username</label>
-            <input
-              type="text"
-              name="username"
-              className="form-control"
-              required
-              onChange={handleChange}
-            />
+        <div className="card shadow mb-4">
+          <div className="card-body">
+            <form onSubmit={handleSubmit}>
+              <div className="mb-3">
+                <label className="form-label">Username</label>
+                <input
+                  type="text"
+                  name="username"
+                  className="form-control"
+                  required
+                  onChange={handleChange}
+                />
+                {errors.username && <div className="invalid-feedback">{errors.username}</div>}
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label">Password</label>
+                <input
+                  type="password"
+                  name="password"
+                  className="form-control"
+                  required
+                  onChange={handleChange}
+                />
+                {errors.password && <div className="invalid-feedback">{errors.password}</div>}
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label">Role (Opsional)</label>
+                <input
+                  type="text"
+                  name="role"
+                  className="form-control"
+                  onChange={handleChange}
+                />
+                {errors.role && <div className="invalid-feedback">{errors.role}</div>}
+              </div>
+
+              <div className="text-end mt-4">
+                <button type="submit" className="btn btn-primary">
+                  <i className="fas fa-save me-2"></i> Simpan
+                </button>
+              </div>
+            </form>
           </div>
-
-          <div className="mb-3">
-            <label>Password</label>
-            <input
-              type="password"
-              name="password"
-              className="form-control"
-              required
-              onChange={handleChange}
-            />
-          </div>
-
-          <div className="mb-3">
-            <label>Role (Opsional)</label>
-            <input
-              type="text"
-              name="role"
-              className="form-control"
-              onChange={handleChange}
-            />
-          </div>
-
-          <button type="submit" className="btn btn-primary">Simpan</button>
-        </form>
+        </div>
       </div>
-
-      <ModalDialog
-        show={modal.show}
-        title={modal.title}
-        message={modal.message}
-        isSuccess={modal.isSuccess}
-        onClose={() => setModal((prev) => ({ ...prev, show: false }))}
-      />
+      {toast.show && (
+        <div className="position-fixed bottom-0 end-0 p-3" style={{ zIndex: 1060 }}>
+          <div className={`toast show align-items-center text-white ${toast.isSuccess ? 'bg-success' : 'bg-danger'} border-0`}>
+            <div className="d-flex">
+              <div className="toast-body">
+                {toast.message}
+              </div>
+              <button
+                type="button"
+                className="btn-close btn-close-white me-2 m-auto"
+                onClick={() => setToast(prev => ({ ...prev, show: false }))}
+              ></button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

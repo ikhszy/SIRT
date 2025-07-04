@@ -53,7 +53,7 @@ const getAllTransactions = async (req, res) => {
       SELECT COUNT(*) AS total
       FROM inventory_transactions it
       LEFT JOIN inventory_items i ON i.id = it.item_id
-      LEFT JOIN residents r ON r.id = it.borrower_id
+      LEFT JOIN residents r ON r.id = it.borrower_id AND it.borrower_type = 'warga'
       ${whereClause}
     `;
     const countResult = await db.get(countQuery, params);
@@ -61,10 +61,9 @@ const getAllTransactions = async (req, res) => {
 
     // 2. Get paginated data
     const dataQuery = `
-      SELECT it.*, i.name AS item_name, r.full_name AS borrower_name_resident
+      SELECT it.*, i.name AS item_name, it.borrower_name AS borrower_display_name
       FROM inventory_transactions it
       LEFT JOIN inventory_items i ON i.id = it.item_id
-      LEFT JOIN residents r ON r.id = it.borrower_id
       ${whereClause}
       ORDER BY it.created_at DESC
       LIMIT ? OFFSET ?
@@ -85,7 +84,7 @@ const getAllTransactions = async (req, res) => {
 
 // Create new transaction (borrow or return)
 const addTransaction = async (req, res) => {
-  const {
+  let {
     item_id,
     quantity,
     condition,
@@ -105,11 +104,20 @@ const addTransaction = async (req, res) => {
         return res.status(400).json({ error: 'Insufficient quantity in inventory' });
       }
 
-      // Reduce inventory quantity
       await db.run(
         `UPDATE inventory_items SET quantity = quantity - ? WHERE id = ?`,
         [quantity, item_id]
       );
+
+      // Get name from residents table if type is warga
+      if (borrower_type === 'warga' && borrower_id) {
+        const resident = await db.get(`SELECT full_name FROM residents WHERE id = ?`, [borrower_id]);
+        if (resident?.full_name) {
+          borrower_name = resident.full_name;
+        } else {
+          return res.status(400).json({ error: 'Invalid resident ID provided' });
+        }
+      }
     }
 
     if (transaction_type === 'return') {
@@ -117,6 +125,12 @@ const addTransaction = async (req, res) => {
       await db.run(
         `UPDATE inventory_items SET quantity = quantity + ? WHERE id = ?`,
         [quantity, item_id]
+      );
+
+      // ✅ Update condition to returned condition (e.g. rusak/hilang/baik)
+      await db.run(
+        `UPDATE inventory_items SET condition = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [condition, item_id]
       );
     }
 

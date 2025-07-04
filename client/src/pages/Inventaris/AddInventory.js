@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../layouts/AdminLayout';
 import api from '../../api';
-import ModalDialog from '../../Components/ModalDialog';
 
 export default function AddInventory() {
   const [name, setName] = useState('');
@@ -11,44 +10,34 @@ export default function AddInventory() {
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
-
-  const [modal, setModal] = useState({
-    show: false,
-    title: '',
-    message: '',
-    isSuccess: true
-  });
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [toast, setToast] = useState({ show: false, message: '', isError: false });
 
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (toast.show) {
+      const timer = setTimeout(() => setToast({ show: false, message: '', isError: false }), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  const validateForm = () => {
+    const errors = {};
+    if (!name.trim()) errors.name = 'Nama barang wajib diisi';
+    if (!quantity || isNaN(quantity) || quantity <= 0) errors.quantity = 'Jumlah harus angka > 0';
+    if (!location.trim()) errors.location = 'Lokasi wajib diisi';
+    return errors;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const errors = validateForm();
+    setFieldErrors(errors);
 
-    if (!name.trim()) {
-      return setModal({
-        show: true,
-        title: 'Validasi Gagal',
-        message: 'Nama barang wajib diisi.',
-        isSuccess: false
-      });
-    }
-
-    if (!quantity || isNaN(quantity) || quantity <= 0) {
-      return setModal({
-        show: true,
-        title: 'Validasi Gagal',
-        message: 'Jumlah harus berupa angka lebih besar dari 0.',
-        isSuccess: false
-      });
-    }
-
-    if (!location.trim()) {
-      return setModal({
-        show: true,
-        title: 'Validasi Gagal',
-        message: 'Lokasi wajib diisi.',
-        isSuccess: false
-      });
+    if (Object.keys(errors).length > 0) {
+      setToast({ show: true, message: 'Harap periksa kembali isian Anda.', isError: true });
+      return;
     }
 
     setSaving(true);
@@ -62,65 +51,65 @@ export default function AddInventory() {
         description: description.trim() || null,
       });
 
-      setModal({
-        show: true,
-        title: 'Sukses',
-        message: 'Inventaris berhasil ditambahkan!',
-        isSuccess: true
-      });
-
-      setTimeout(() => {
-        navigate('/inventory');
-      }, 1500);
+      setToast({ show: true, message: '✅ Inventaris berhasil ditambahkan!', isError: false });
+      setTimeout(() => navigate('/inventory'), 1500);
     } catch (err) {
-      console.error('Failed to add inventory:', err);
-      setModal({
-        show: true,
-        title: 'Gagal',
-        message: 'Gagal menambahkan inventaris. Silakan coba lagi.',
-        isSuccess: false
-      });
+      console.error('❌ Gagal menambahkan inventaris:', err);
+      setToast({ show: true, message: '❌ Gagal menambahkan inventaris.', isError: true });
       setSaving(false);
     }
   };
 
+  const inputClass = (field) => `form-control${fieldErrors[field] ? ' is-invalid' : ''}`;
+
   return (
     <AdminLayout>
       <div className="container-fluid px-4">
-        <h1 className="h3 mb-4 text-gray-800">
-          <i className="fas fa-plus me-2"></i> Tambah Inventaris
-        </h1>
+        <div className="d-flex justify-content-between align-items-left mb-4">
+          <h1 className="h3 text-gray-800">
+            <i className="fas fa-plus me-2"></i> Tambah Inventaris
+          </h1>
+          <button className="btn btn-warning" onClick={() => navigate('/inventory')}>
+            <i className="fas fa-arrow-left me-1"></i> Kembali
+          </button>
+        </div>
 
         <div className="card shadow mb-4">
           <div className="card-body">
             <form onSubmit={handleSubmit}>
               <div className="mb-3">
-                <label className="form-label">Nama Barang</label>
+                <label>Nama Barang</label>
                 <input
                   type="text"
-                  className="form-control"
-                  placeholder="Masukkan nama barang"
+                  className={inputClass('name')}
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setFieldErrors((prev) => ({ ...prev, name: undefined }));
+                  }}
                   disabled={saving}
                 />
+                {fieldErrors.name && <div className="invalid-feedback">{fieldErrors.name}</div>}
               </div>
 
               <div className="mb-3">
-                <label className="form-label">Jumlah</label>
+                <label>Jumlah</label>
                 <input
                   type="number"
-                  className="form-control"
-                  placeholder="Masukkan jumlah"
+                  className={inputClass('quantity')}
                   value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
+                  onChange={(e) => {
+                    setQuantity(e.target.value);
+                    setFieldErrors((prev) => ({ ...prev, quantity: undefined }));
+                  }}
                   disabled={saving}
                   min={1}
                 />
+                {fieldErrors.quantity && <div className="invalid-feedback">{fieldErrors.quantity}</div>}
               </div>
 
               <div className="mb-3">
-                <label className="form-label">Kondisi</label>
+                <label>Kondisi</label>
                 <select
                   className="form-select"
                   value={condition}
@@ -134,30 +123,32 @@ export default function AddInventory() {
               </div>
 
               <div className="mb-3">
-                <label className="form-label">Lokasi</label>
+                <label>Lokasi</label>
                 <input
                   type="text"
-                  className="form-control"
-                  placeholder="Masukkan lokasi barang"
+                  className={inputClass('location')}
                   value={location}
-                  onChange={(e) => setLocation(e.target.value)}
+                  onChange={(e) => {
+                    setLocation(e.target.value);
+                    setFieldErrors((prev) => ({ ...prev, location: undefined }));
+                  }}
                   disabled={saving}
                 />
+                {fieldErrors.location && <div className="invalid-feedback">{fieldErrors.location}</div>}
               </div>
 
               <div className="mb-3">
-                <label className="form-label">Deskripsi (opsional)</label>
+                <label>Deskripsi (opsional)</label>
                 <textarea
                   className="form-control"
                   rows={3}
-                  placeholder="Tambahkan deskripsi (opsional)"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={saving}
                 />
               </div>
 
-              <button className="btn btn-primary" type="submit" disabled={saving}>
+              <button type="submit" className="btn btn-primary" disabled={saving}>
                 <i className="fas fa-save me-1"></i> {saving ? 'Menyimpan...' : 'Simpan'}
               </button>{' '}
               <button
@@ -173,13 +164,19 @@ export default function AddInventory() {
         </div>
       </div>
 
-      <ModalDialog
-        show={modal.show}
-        title={modal.title}
-        message={modal.message}
-        isSuccess={modal.isSuccess}
-        onClose={() => setModal((prev) => ({ ...prev, show: false }))}
-      />
+      {toast.show && (
+        <div
+          className={`toast position-fixed bottom-0 end-0 m-4 show text-white border-0 ${
+            toast.isError ? 'bg-danger' : 'bg-success'
+          }`}
+          role="alert"
+          style={{ zIndex: 9999 }}
+        >
+          <div className="d-flex">
+            <div className="toast-body">{toast.message}</div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

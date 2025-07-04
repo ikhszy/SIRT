@@ -306,7 +306,7 @@ exports.updateIncome = (req, res) => {
     if (!addressId || !months.length) return callback();
 
     const softDeleteSql = `
-      UPDATE donation_history SET status = 'D', date_modified = ?
+      UPDATE donation_history SET status = 'D', updated_at = ?
       WHERE address_id = ? AND income_id = ?
     `;
     db.run(softDeleteSql, [now, addressId, id], (err) => {

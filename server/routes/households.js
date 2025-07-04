@@ -54,6 +54,12 @@ router.post("/", authMiddleware, async (req, res) => {
       return res.status(400).json({ error: "borrowed_from_kk is required when status_kepemilikan_rumah is 'numpang alamat'" });
     }
 
+    // Check if KK number already exists
+    const existing = await db.get(`SELECT kk_number FROM households WHERE kk_number = ?`, [kk_number]);
+    if (existing) {
+      return res.status(400).json({ error: "Nomor KK sudah digunakan. Harap periksa kembali." });
+    }
+
     const sql = `
       INSERT INTO households (
         kk_number, address_id, status_KK, status_KK_remarks,

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
-import DataTableCard from '../Components/DataTableCard';
+import ModalDialog from '../Components/ModalDialog';
 
 export default function Households() {
   const [households, setHouseholds] = useState([]);
@@ -16,6 +16,15 @@ export default function Households() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Modal state for delete confirmation
+  const [confirmModal, setConfirmModal] = useState({
+    show: false,
+    kk_number: null,
+  });
+
+  // Snackbar state
+  const [showSnackbar, setShowSnackbar] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -34,10 +43,24 @@ export default function Households() {
     undefined: '-',
   };
 
-  const handleDelete = async (kk_number) => {
-    if (!window.confirm("Are you sure you want to delete this household?")) return;
-    await api.delete(`/households/${kk_number}`);
-    setHouseholds(households.filter(h => h.kk_number !== kk_number));
+  // Show modal to confirm delete
+  const confirmDelete = (kk_number) => {
+    setConfirmModal({ show: true, kk_number });
+  };
+
+  // Handle confirmed deletion
+  const handleConfirmedDelete = async () => {
+    try {
+      await api.delete(`/households/${confirmModal.kk_number}`);
+      setHouseholds(households.filter(h => h.kk_number !== confirmModal.kk_number));
+      setShowSnackbar(true);
+      setTimeout(() => setShowSnackbar(false), 3000); // auto hide after 3 seconds
+    } catch (err) {
+      alert("Gagal menghapus Kartu Keluarga");
+      console.error(err);
+    } finally {
+      setConfirmModal({ show: false, kk_number: null });
+    }
   };
 
   const filtered = households.filter(h => {
@@ -119,6 +142,7 @@ export default function Households() {
             </select>
           </div>
         </div>
+
         <div className="card shadow mb-4">
           <div className="card-body">
             <div className="table-responsive">
@@ -135,7 +159,7 @@ export default function Households() {
                 <tbody>
                   {paginated.length === 0 ? (
                     <tr>
-                      <td colSpan="4" className="text-center">Tidak ada data Kartu Keluarga</td>
+                      <td colSpan="5" className="text-center">Tidak ada data Kartu Keluarga</td>
                     </tr>
                   ) : (
                     paginated.map((h) => (
@@ -149,10 +173,10 @@ export default function Households() {
                         <td>{h.full_address || '-'}</td>
                         <td>{h.status_KK === 'tidak aktif' ? 'Tidak Aktif' : 'Aktif'}</td>
                         <td>{ownershipLabels[h.status_kepemilikan_rumah] || '-'}</td>
-                        <td>
+                        <td onClick={e => e.stopPropagation()}>
                           <button
                             className="btn btn-sm btn-danger"
-                            onClick={() => handleDelete(h.kk_number)}
+                            onClick={() => confirmDelete(h.kk_number)}
                           >
                             <i className="fas fa-trash"></i>
                           </button>
@@ -215,6 +239,49 @@ export default function Households() {
             </div>
           </div>
         </div>
+
+        {/* ModalDialog for confirmation */}
+        <ModalDialog
+          show={confirmModal.show}
+          title="Konfirmasi Hapus"
+          message={`Apakah Anda yakin ingin menghapus Kartu Keluarga dengan nomor "${confirmModal.kk_number}"?`}
+          onClose={() => setConfirmModal({ show: false, kk_number: null })}
+          isSuccess={false}
+          footer={
+            <>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setConfirmModal({ show: false, kk_number: null })}
+              >
+                Batal
+              </button>
+              <button className="btn btn-danger" onClick={handleConfirmedDelete}>
+                Hapus
+              </button>
+            </>
+          }
+        />
+
+        {/* Snackbar notification */}
+        {showSnackbar && (
+          <div
+            className="position-fixed bottom-0 end-0 p-3"
+            style={{ zIndex: 1060 }}
+          >
+            <div className="toast show align-items-center text-white bg-success border-0 shadow">
+              <div className="d-flex">
+                <div className="toast-body">
+                  Data Kartu Keluarga berhasil dihapus
+                </div>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white me-2 m-auto"
+                  onClick={() => setShowSnackbar(false)}
+                ></button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AdminLayout>
   );

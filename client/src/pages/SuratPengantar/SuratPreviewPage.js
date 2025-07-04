@@ -75,7 +75,7 @@ export default function SuratPreviewPage() {
       <div className="mb-3 d-print-none d-flex justify-content-end gap-2">
         {letter.letterStatus !== 'Diserahkan' && (
           <button
-            className="btn btn-outline-success"
+            className="btn btn-success"
             onClick={async () => {
               try {
                 await api.put(`/surat/${id}/status`, { letterStatus: 'Diserahkan' });
@@ -116,25 +116,6 @@ export default function SuratPreviewPage() {
           date_created={letter.date_created}
         />
       </div>
-      {letter.letterStatus !== 'Diserahkan' && (
-        <div className="text-end mt-4">
-          <button
-            className="btn btn-success"
-            onClick={async () => {
-              try {
-                await api.put(`/surat/${id}/status`, { letterStatus: 'Diserahkan' });
-                alert('Surat telah diserahkan.');
-                fetchLetter(); // Re-fetch data to refresh status
-              } catch (err) {
-                console.error('Gagal menyerahkan surat:', err);
-                alert('Gagal menyerahkan surat.');
-              }
-            }}
-          >
-            Tandai telah diserahkan
-          </button>
-        </div>
-      )}
     </AdminLayout>
   );
 }

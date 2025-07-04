@@ -4,7 +4,6 @@ import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
 import countries from '../utils/countries';
 import occupations from '../utils/occupations';
-import ModalDialog from '../Components/ModalDialog';
 
 export default function AddResident() {
   const [form, setForm] = useState({
@@ -32,7 +31,7 @@ export default function AddResident() {
   const [addresses, setAddresses] = useState([]);
   const [households, setHouseholds] = useState([]);
   const [selectedKKOwnership, setSelectedKKOwnership] = useState('');
-  const [modal, setModal] = useState({ show: false, message: '', title: '', isSuccess: true });
+  const [toast, setToast] = useState({ show: false, message: '', isError: false });
   const navigate = useNavigate();
   
 
@@ -67,6 +66,13 @@ export default function AddResident() {
       setForm((prev) => ({ ...prev, age }));
     }
   }, [form.birthdate]);
+
+  useEffect(() => {
+    if (toast.show) {
+      const timer = setTimeout(() => setToast({ show: false, message: '', isError: false }), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -141,37 +147,63 @@ export default function AddResident() {
     setFieldErrors(newFieldErrors);
 
     if (Object.keys(newFieldErrors).length > 0) {
-      setModal({
+      setToast({
         show: true,
-        title: 'Gagal',
         message: 'Harap isi semua bagian yang wajib diisi!',
-        isSuccess: false,
+        isError: true,
       });
       return;
     }
 
+    // New: Check if NIK already exists
+    try {
+      const checkNikRes = await api.get(`/residents/check-nik?nik=${encodeURIComponent(form.nik)}`);
+      if (checkNikRes.data.exists) {
+        setFieldErrors((prev) => ({ ...prev, nik: 'NIK sudah digunakan' }));
+        setToast({
+          show: true,
+          message: 'NIK sudah digunakan, periksa kembali.',
+          isError: true,
+        });
+        return;
+      }
+    } catch (err) {
+      console.error('Error checking NIK:', err);
+      setToast({
+        show: true,
+        message: 'Gagal memeriksa NIK, coba lagi nanti.',
+        isError: true,
+      });
+      return;
+    }
+
+    // Proceed to create resident if no duplicate
     try {
       await api.post('/residents', form);
-      setModal({
+      setToast({
         show: true,
-        title: 'Sukses',
         message: 'Data Warga berhasil ditambahkan!',
-        isSuccess: true,
+        isError: false,
       });
-      setTimeout(() => {
-        navigate('/residents');
-      }, 1500);
+      setTimeout(() => navigate('/residents'), 2000);
     } catch (err) {
+      // FIX HERE: Get backend error message from err.response.data.error (your backend uses "error" key)
       const errMsg =
-        err.response?.data?.message ||
+        err.response?.data?.error ||  // <-- use this, because your backend sends { error: "message" }
+        err.response?.data?.message ||  // fallback if you ever use 'message' key
         err.message ||
         'Gagal menambahkan warga karena kesalahan tidak diketahui';
-      setModal({
+
+      setToast({
         show: true,
-        title: 'Gagal',
         message: errMsg,
-        isSuccess: false,
+        isError: true,
       });
+
+      // Highlight NIK error field if error mentions NIK uniqueness
+      if (errMsg.toLowerCase().includes('nik sudah digunakan')) {
+        setFieldErrors((prev) => ({ ...prev, nik: 'NIK sudah digunakan' }));
+      }
     }
   };
 
@@ -182,10 +214,17 @@ export default function AddResident() {
   return (
     <AdminLayout>
       <div className="container-fluid px-4">
-        <div className="d-flex justify-content-between align-items-center mb-4">
+        <div className="d-flex justify-content-between align-items-left mb-4">
           <h1 className="h3 text-gray-800">
             <i className="fas fa-user-plus me-2"></i> Tambah Warga
           </h1>
+          <button
+            type="button"
+            className="btn btn-warning"
+            onClick={() => navigate('/residents')}
+          >
+            <i className="fas fa-arrow-left me-1"></i> Kembali
+          </button>
         </div>
         <div className="card shadow mb-4">
           <div className="card-body">
@@ -502,19 +541,23 @@ export default function AddResident() {
                 </div>
               )}
               <button type="submit" className="btn btn-primary">
-                Add Resident
+                Buat Data Warga
               </button>
             </form>
           </div>
         </div>
       </div>
-      <ModalDialog
-        show={modal.show}
-        title={modal.title}
-        message={modal.message}
-        isSuccess={modal.isSuccess}
-        onClose={() => setModal(prev => ({ ...prev, show: false }))}
-      />
+      {toast.show && (
+        <div
+          className={`toast align-items-center text-white border-0 position-fixed bottom-0 end-0 m-4 show ${toast.isError ? 'bg-danger' : 'bg-success'}`}
+          role="alert"
+          style={{ zIndex: 9999 }}
+        >
+          <div className="d-flex">
+            <div className="toast-body">{toast.message}</div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

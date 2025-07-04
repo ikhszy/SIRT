@@ -39,7 +39,7 @@ export default function IntroLetterForm() {
   };
 
   const fetchResidentDetail = async (nik) => {
-    const res = await api.get(`/residents/nik/${nik}`); // ✅ Ensure you're using /nik/:nik
+    const res = await api.get(`/residents/nik/${nik}`); 
     setResidentDetail(res.data);
   };
 
@@ -66,83 +66,101 @@ export default function IntroLetterForm() {
 
   return (
     <AdminLayout>
-      <Card className="p-4">
-        <h4>Buat Surat Pengantar</h4>
-        <Form onSubmit={handleSubmit}>
-          <Form.Group className="mb-3">
-            <Form.Label>NIK</Form.Label>
-            <Select
-              options={residents.map(r => ({
-                value: r.nik,
-                label: `${r.full_name} - ${r.nik}`
-              }))}
-              value={
-                residents
-                  .map(r => ({ value: r.nik, label: `${r.full_name} - ${r.nik}` }))
-                  .find(opt => opt.value === selectedNIK) || null
-              }
-              onChange={(option) => setSelectedNIK(option ? option.value : '')}
-              placeholder="Cari nama atau NIK..."
-              isClearable
-            />
-          </Form.Group>
+      <div className="container-fluid px-4">
+        <div className="d-flex justify-content-between align-items-left mb-4">
+          <h1 className="h3 text-gray-800">
+            <i className="fas fa-file-alt me-2"></i> Buat Surat Pengantar
+          </h1>
+          <button
+            type="button"
+            className="btn btn-warning"
+            onClick={() => navigate('/surat')} // or your preferred url
+          >
+            <i className="fas fa-arrow-left me-1"></i> Kembali
+          </button>
+        </div>
+        <div className="card shadow mb-4">
+          <div className="card-body">
+            <Form onSubmit={handleSubmit}>
+              <Form.Group className="mb-3">
+                <Form.Label>NIK</Form.Label>
+                <Select
+                  options={residents.map(r => ({
+                    value: r.nik,
+                    label: `${r.full_name} - ${r.nik}`
+                  }))}
+                  value={
+                    residents
+                      .map(r => ({ value: r.nik, label: `${r.full_name} - ${r.nik}` }))
+                      .find(opt => opt.value === selectedNIK) || null
+                  }
+                  onChange={(option) => setSelectedNIK(option ? option.value : '')}
+                  placeholder="Cari nama atau NIK..."
+                  isClearable
+                />
+              </Form.Group>
 
-          <Form.Group className="mb-3">
-            <Form.Label>Nomor Surat</Form.Label>
-            <Form.Control
-              type="text"
-              value={letterNumber}
-              onChange={(e) => setLetterNumber(e.target.value)}
-              placeholder="Masukkan Nomor Surat"
-            />
-          </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Nomor Surat</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={letterNumber}
+                  onChange={(e) => setLetterNumber(e.target.value)}
+                  placeholder="Masukkan Nomor Surat"
+                />
+              </Form.Group>
 
-          <Form.Group className="mb-3">
-            <Form.Label>Maksud / Keperluan</Form.Label>
-            <Form.Control
-              as="textarea"
-              rows={3}
-              value={letterPurpose}
-              onChange={(e) => setLetterPurpose(e.target.value)}
-              placeholder="Masukkan tujuan pembuatan surat"
-            />
-          </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Maksud / Keperluan</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  value={letterPurpose}
+                  onChange={(e) => setLetterPurpose(e.target.value)}
+                  placeholder="Masukkan tujuan pembuatan surat"
+                />
+              </Form.Group>
 
-          {residentDetail && (
-            <>
-              <h5>Data Otomatis</h5>
-              <Row>
-                <Col md={6}><strong>Nama:</strong> {residentDetail.full_name}</Col>
-                <Col md={6}><strong>Tempat/Tanggal Lahir:</strong> {residentDetail.birthplace}, {residentDetail.birthdate}</Col>
-              </Row>
-              <Row>
-                <Col md={6}><strong>Jenis Kelamin:</strong> {residentDetail.gender}</Col>
-                <Col md={6}><strong>NIK / KK:</strong> {residentDetail.nik} / {residentDetail.kk_number}</Col>
-              </Row>
-              <Row>
-                <Col md={6}><strong>Status Perkawinan:</strong> {residentDetail.marital_status}</Col>
-                <Col md={6}><strong>Pekerjaan:</strong> {residentDetail.occupation}</Col>
-              </Row>
-              <Row>
-                <Col md={6}><strong>Kewarganegaraan:</strong> {residentDetail.citizenship}</Col>
-                <Col md={6}><strong>Pendidikan:</strong> {residentDetail.education}</Col>
-              </Row>
-              <Row>
-                <Col md={6}><strong>Agama:</strong> {residentDetail.religion}</Col>
-              </Row>
-              <Row>
-                <Col md={12}>
-                  <strong>Alamat:</strong> {residentDetail.full_address}, RT {settings.rt}/RW {settings.rw}, {settings.kelurahan}, {settings.kecamatan}, {settings.kota}, {settings.kodepos}
-                </Col>
-              </Row>
-            </>
-          )}
+              {residentDetail && (
+                <>
+                  <hr className="my-4" />
+                  <h5 className="mb-3">Data Otomatis</h5>
+                  <Row className="mb-2">
+                    <Col md={6}><strong>Nama:</strong> {residentDetail.full_name}</Col>
+                    <Col md={6}><strong>Tempat/Tanggal Lahir:</strong> {residentDetail.birthplace}, {residentDetail.birthdate}</Col>
+                  </Row>
+                  <Row className="mb-2">
+                    <Col md={6}><strong>Jenis Kelamin:</strong> {residentDetail.gender}</Col>
+                    <Col md={6}><strong>NIK / KK:</strong> {residentDetail.nik} / {residentDetail.kk_number}</Col>
+                  </Row>
+                  <Row className="mb-2">
+                    <Col md={6}><strong>Status Perkawinan:</strong> {residentDetail.marital_status}</Col>
+                    <Col md={6}><strong>Pekerjaan:</strong> {residentDetail.occupation}</Col>
+                  </Row>
+                  <Row className="mb-2">
+                    <Col md={6}><strong>Kewarganegaraan:</strong> {residentDetail.citizenship}</Col>
+                    <Col md={6}><strong>Pendidikan:</strong> {residentDetail.education}</Col>
+                  </Row>
+                  <Row className="mb-3">
+                    <Col md={6}><strong>Agama:</strong> {residentDetail.religion}</Col>
+                  </Row>
+                  <Row>
+                    <Col md={12}>
+                      <strong>Alamat:</strong> {residentDetail.full_address}, RT {settings.rt}/RW {settings.rw}, {settings.kelurahan}, {settings.kecamatan}, {settings.kota}, {settings.kodepos}
+                    </Col>
+                  </Row>
+                </>
+              )}
 
-          <div className="mt-4 text-end">
-            <Button type="submit">Simpan dan Buat Surat</Button>
+              <div className="mt-4 text-end">
+                <Button type="submit" className="btn btn-primary">
+                  <i className="fas fa-save me-2"></i> Simpan dan Buat Surat
+                </Button>
+              </div>
+            </Form>
           </div>
-        </Form>
-      </Card>
+        </div>
+      </div>
     </AdminLayout>
   );
 }

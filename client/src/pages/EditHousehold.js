@@ -3,7 +3,6 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
 import Select from 'react-select';
-import ModalDialog from '../Components/ModalDialog';
 
 export default function EditHousehold() {
   const { kk_number } = useParams();
@@ -25,12 +24,7 @@ export default function EditHousehold() {
   const [addresses, setAddresses] = useState([]);
   const [kkOptions, setKkOptions] = useState([]);
   const [fieldErrors, setFieldErrors] = useState({});
-  const [modal, setModal] = useState({
-    show: false,
-    title: '',
-    message: '',
-    isSuccess: true
-  });
+  const [toast, setToast] = useState({ show: false, message: '', isError: false });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -62,17 +56,19 @@ export default function EditHousehold() {
         setKkOptions(options);
       } catch (err) {
         console.error('Failed to load data:', err);
-        setModal({
-          show: true,
-          title: 'Gagal',
-          message: 'Gagal memuat data.',
-          isSuccess: false
-        });
+        setToast({ show: true, message: 'Gagal memuat data.', isError: true });
       }
     };
 
     fetchData();
   }, [kk_number]);
+
+  useEffect(() => {
+    if (toast.show) {
+      const timer = setTimeout(() => setToast({ show: false, message: '', isError: false }), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const handleChange = (e) => {
     if (!isEditable) return;
@@ -93,35 +89,26 @@ export default function EditHousehold() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const required = ['address_id', 'status_KK', 'status_kepemilikan_rumah'];
     const errors = {};
-
-    required.forEach((field) => {
-      if (!form[field] || form[field].toString().trim() === '') {
-        errors[field] = 'Harus diisi';
-      }
-    });
+    if (!form.address_id) errors.address_id = 'Alamat wajib diisi';
+    if (!form.status_KK) errors.status_KK = 'Status KK wajib dipilih';
+    if (!form.status_kepemilikan_rumah) errors.status_kepemilikan_rumah = 'Status kepemilikan rumah wajib dipilih';
 
     if (form.status_KK === 'tidak aktif' && !form.status_KK_remarks.trim()) {
-      errors.status_KK_remarks = 'Harus diisi jika status tidak aktif';
+      errors.status_KK_remarks = 'Harap isi keterangan tidak aktif';
     }
 
     if (form.status_kepemilikan_rumah !== 'pemilik' && !form.kepemilikan_remarks.trim()) {
-      errors.kepemilikan_remarks = 'Harus diisi jika bukan pemilik';
+      errors.kepemilikan_remarks = 'Harap isi keterangan kepemilikan';
     }
 
     if (form.status_kepemilikan_rumah === 'numpang alamat' && !form.borrowed_from_kk) {
-      errors.borrowed_from_kk = 'Wajib diisi untuk status "Numpang Alamat"';
+      errors.borrowed_from_kk = 'Harap pilih KK tempat menumpang';
     }
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      setModal({
-        show: true,
-        title: 'Gagal',
-        message: 'Harap isi semua field yang wajib.',
-        isSuccess: false
-      });
+      setToast({ show: true, message: 'Harap periksa kembali isian Anda.', isError: true });
       return;
     }
 
@@ -135,22 +122,11 @@ export default function EditHousehold() {
 
       await api.put(`/households/${kk_number}`, payload);
 
-      setModal({
-        show: true,
-        title: 'Berhasil',
-        message: '✅ Data KK berhasil diperbarui.',
-        isSuccess: true
-      });
-
-      setTimeout(() => navigate('/households'), 1200);
+      setToast({ show: true, message: '✅ Data KK berhasil diperbarui.', isError: false });
+      setTimeout(() => navigate('/households'), 2000);
     } catch (err) {
       console.error(err);
-      setModal({
-        show: true,
-        title: 'Gagal',
-        message: '❌ Gagal memperbarui data KK.',
-        isSuccess: false
-      });
+      setToast({ show: true, message: '❌ Gagal memperbarui data KK.', isError: true });
     }
   };
 
@@ -162,18 +138,22 @@ export default function EditHousehold() {
             <i className="fas fa-edit me-2"></i>
             {isViewMode && !isEditable ? 'Detail Kartu Keluarga' : 'Edit Kartu Keluarga'}
           </h1>
-          {isViewMode && !isEditable && (
-            <button className="btn btn-primary" onClick={() => setIsEditable(true)}>
-              <i className="fas fa-edit me-1"></i> Ubah
+          <div className="d-flex gap-2">
+            {!isEditable && (
+              <button className="btn btn-primary" onClick={() => setIsEditable(true)}>
+                <i className="fas fa-edit me-1"></i> Ubah
+              </button>
+            )}
+            <button type="button" className="btn btn-secondary" onClick={() => navigate('/households')}>
+              <i className="fas fa-arrow-left me-1"></i> Kembali
             </button>
-          )}
+          </div>
         </div>
-
         <div className="card shadow mb-4">
           <div className="card-body">
             <form onSubmit={handleSubmit}>
               <div className="mb-3">
-                <label className="form-label">Nomor Kartu Keluarga</label>
+                <label className="form-label">Nomor KK</label>
                 <input className="form-control" value={kk_number} disabled />
               </div>
 
@@ -282,24 +262,27 @@ export default function EditHousehold() {
 
               {isEditable && (
                 <button type="submit" className="btn btn-primary">
-                  <i className="fas fa-save me-1"></i> Simpan
+                  <i className="fas fa-save me-1"></i> Simpan Perubahan
                 </button>
               )}
-              <button type="button" className="btn btn-secondary ms-2" onClick={() => navigate('/households')}>
-                Kembali
-              </button>
             </form>
           </div>
         </div>
       </div>
 
-      <ModalDialog
-        show={modal.show}
-        title={modal.title}
-        message={modal.message}
-        isSuccess={modal.isSuccess}
-        onClose={() => setModal(prev => ({ ...prev, show: false }))}
-      />
+      {toast.show && (
+        <div
+          className={`toast align-items-center text-white border-0 position-fixed bottom-0 end-0 m-4 show ${
+            toast.isError ? 'bg-danger' : 'bg-success'
+          }`}
+          role="alert"
+          style={{ zIndex: 9999 }}
+        >
+          <div className="d-flex">
+            <div className="toast-body">{toast.message}</div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

@@ -11,12 +11,17 @@ export default function ReturnTransaction() {
   const [condition, setCondition] = useState("baik");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+
+  const [errors, setErrors] = useState({});
+  const [toast, setToast] = useState({ show: false, message: "", isSuccess: true });
 
   useEffect(() => {
     if (!transaction) {
-      setError("❌ Data transaksi tidak ditemukan.");
+      setToast({
+        show: true,
+        message: "❌ Data transaksi tidak ditemukan.",
+        isSuccess: false
+      });
     }
   }, [transaction]);
 
@@ -27,21 +32,19 @@ export default function ReturnTransaction() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage("");
-    setError("");
+    setErrors({});
+    setToast({ show: false, message: "", isSuccess: true });
 
     if (!transaction) {
-      setError("Transaksi tidak tersedia.");
-      return;
+      return setToast({ show: true, message: "Transaksi tidak tersedia.", isSuccess: false });
     }
 
-    if ((condition === "rusak" || condition === "hilang") && description.trim() === "") {
-      setError("Mohon isi keterangan jika barang rusak atau hilang.");
+    if ((condition === "rusak" || condition === "hilang") && !description.trim()) {
+      setErrors({ description: "Mohon isi keterangan jika barang rusak atau hilang." });
       return;
     }
 
     setLoading(true);
-
     try {
       await api.post("/inventory-transactions", {
         item_id: transaction.item_id,
@@ -55,10 +58,19 @@ export default function ReturnTransaction() {
         transaction_type: "return",
       });
 
-      setMessage("✅ Barang berhasil dikembalikan.");
-      setTimeout(() => navigate("/inventory-transaction"), 2000);
+      setToast({
+        show: true,
+        message: "✅ Barang berhasil dikembalikan.",
+        isSuccess: true,
+      });
+
+      setTimeout(() => navigate("/inventory-transaction"), 1500);
     } catch (err) {
-      setError("❌ Gagal mengembalikan barang: " + (err.response?.data?.error || err.message));
+      setToast({
+        show: true,
+        message: "❌ Gagal mengembalikan barang: " + (err.response?.data?.error || err.message),
+        isSuccess: false,
+      });
     } finally {
       setLoading(false);
     }
@@ -77,12 +89,18 @@ export default function ReturnTransaction() {
   return (
     <AdminLayout>
       <div className="container-fluid px-4">
-        <h1 className="h3 mb-4 text-gray-800">
-          <i className="fas fa-undo me-2"></i>Kembalikan Barang
-        </h1>
-
-        {message && <div className="alert alert-success">{message}</div>}
-        {error && <div className="alert alert-danger">{error}</div>}
+        <div className="d-flex justify-content-between align-items-left mb-4">
+          <h1 className="h3 text-gray-800">
+            <i className="fas fa-undo me-2"></i>Kembalikan Barang
+          </h1>
+          <button
+            type="button"
+            className="btn btn-warning"
+            onClick={() => navigate('/inventory-transaction')}
+          >
+            <i className="fas fa-arrow-left me-1"></i> Kembali
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
@@ -98,6 +116,11 @@ export default function ReturnTransaction() {
           <div className="mb-3">
             <label>Dipinjam oleh</label>
             <input type="text" className="form-control" value={borrowerDisplayName} disabled />
+          </div>
+
+          <div className="mb-3">
+            <label>Lokasi pinjam</label>
+            <input type="text" className="form-control" value={transaction.location} disabled />
           </div>
 
           <div className="mb-3">
@@ -123,6 +146,7 @@ export default function ReturnTransaction() {
               rows={3}
               placeholder="Isi keterangan jika barang rusak/hilang"
             />
+            {errors.description && <div className="text-danger small">{errors.description}</div>}
           </div>
 
           <button className="btn btn-success" type="submit" disabled={loading}>
@@ -136,6 +160,30 @@ export default function ReturnTransaction() {
             )}
           </button>
         </form>
+
+        {/* Snackbar */}
+        <div
+          className="toast-container position-fixed bottom-0 end-0 p-3"
+          style={{ zIndex: 9999 }}
+        >
+          <div
+            className={`toast align-items-center text-white ${
+              toast.isSuccess ? "bg-success" : "bg-danger"
+            } ${toast.show ? "show" : ""}`}
+            role="alert"
+            aria-live="assertive"
+            aria-atomic="true"
+          >
+            <div className="d-flex">
+              <div className="toast-body">{toast.message}</div>
+              <button
+                type="button"
+                className="btn-close btn-close-white me-2 m-auto"
+                onClick={() => setToast({ ...toast, show: false })}
+              ></button>
+            </div>
+          </div>
+        </div>
       </div>
     </AdminLayout>
   );

@@ -157,6 +157,20 @@ router.get("/:id", authMiddleware, async (req, res) => {
   }
 });
 
+router.get('/check-nik', authMiddleware, async (req, res) => {
+  try {
+    const { nik } = req.query;
+    if (!nik) return res.status(400).json({ success: false, message: 'NIK is required' });
+
+    const sql = `SELECT COUNT(*) as count FROM residents WHERE nik = ?`;
+    const row = await db.get(sql, [nik]);
+    res.json({ exists: row.count > 0 });
+  } catch (err) {
+    console.error('Check NIK failed:', err);
+    res.status(500).json({ success: false, message: 'Database error' });
+  }
+});
+
 // Create resident
 router.post("/", authMiddleware, async (req, res) => {
   try {
@@ -176,6 +190,12 @@ router.post("/", authMiddleware, async (req, res) => {
     if (household?.status_kepemilikan_rumah === 'pemilik belum pindah') {
       status = 'tidak aktif - domisili diluar';
       status_remarks = null;
+    };
+
+    // Check if NIK already exists
+    const existingResident = await db.get(`SELECT id FROM residents WHERE nik = ?`, [nik]);
+    if (existingResident) {
+      return res.status(400).json({ error: 'NIK sudah digunakan, periksa kembali.' });
     }
 
     const sql = `
@@ -212,7 +232,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
       status_remarks
     } = req.body;
 
-    // 🔒 Check if the KK belongs to a locked household
+    // Check if the KK belongs to a locked household
     const household = await db.get(
       `SELECT status_kepemilikan_rumah FROM households WHERE kk_number = ?`,
       [kk_number]
@@ -221,6 +241,15 @@ router.put("/:id", authMiddleware, async (req, res) => {
     if (household?.status_kepemilikan_rumah === 'pemilik belum pindah') {
       status = 'tidak aktif - domisili diluar';
       status_remarks = null;
+    }
+
+    // Check for duplicate NIK on other residents (excluding this ID)
+    const existingNik = await db.get(
+      `SELECT id FROM residents WHERE nik = ? AND id != ?`,
+      [nik, req.params.id]
+    );
+    if (existingNik) {
+      return res.status(400).json({ error: 'NIK sudah digunakan, periksa kembali.' });
     }
 
     const sql = `

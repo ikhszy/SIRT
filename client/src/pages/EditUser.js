@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AdminLayout from '../layouts/AdminLayout';
-import ModalDialog from '../Components/ModalDialog';
 
 export default function EditUser() {
   const { id } = useParams();
@@ -13,12 +12,9 @@ export default function EditUser() {
     role: ''
   });
 
-  const [modal, setModal] = useState({
-    show: false,
-    title: '',
-    message: '',
-    isSuccess: true
-  });
+  const [errors, setErrors] = useState({});
+  const [toast, setToast] = useState({ show: false, message: '', isSuccess: true });
+  const [isEditable, setIsEditable] = useState(false);
 
   const token = localStorage.getItem('token');
 
@@ -54,13 +50,14 @@ export default function EditUser() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrors({});
 
     const payload = {
       username: formData.username,
       role: formData.role
     };
 
-    if (formData.password && formData.password.trim() !== '') {
+    if (formData.password?.trim()) {
       payload.password = formData.password;
     }
 
@@ -69,77 +66,120 @@ export default function EditUser() {
         headers: { Authorization: token }
       });
 
-      setModal({
+      setToast({
         show: true,
-        title: 'Berhasil',
         message: '✅ Data pengguna berhasil diperbarui.',
         isSuccess: true
       });
 
-      setTimeout(() => {
-        setModal(prev => ({ ...prev, show: false }));
-        navigate('/users');
-      }, 1500);
+      setTimeout(() => navigate('/users'), 1500);
     } catch (err) {
-      setModal({
+      setToast({
         show: true,
-        title: 'Gagal',
         message: err.response?.data?.error || '❌ Gagal memperbarui pengguna',
         isSuccess: false
       });
+
+      if (err.response?.data?.fields) {
+        setErrors(err.response.data.fields);
+      }
     }
   };
 
   return (
     <AdminLayout>
-      <div className="card p-4">
-        <h3 className="mb-3">Edit Pengguna</h3>
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <label>Username</label>
-            <input
-              type="text"
-              name="username"
-              value={formData.username}
-              className="form-control"
-              required
-              onChange={handleChange}
-            />
+      <div className="container-fluid px-4">
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h1 className="h3 text-gray-800">
+            <i className="fas fa-user-edit me-2"></i> Edit Pengguna
+          </h1>
+          <div className="d-flex gap-2">
+            {!isEditable && (
+              <button
+                onClick={() => setIsEditable(true)}
+                className="btn btn-primary"
+              >
+                <i className="fas fa-edit me-1"></i> Ubah
+              </button>
+            )}
+            <button
+              onClick={() => navigate('/users')}
+              className="btn btn-secondary"
+            >
+              <i className="fas fa-arrow-left me-1"></i> Kembali
+            </button>
           </div>
+        </div>
 
-          <div className="mb-3">
-            <label>Password (Kosongkan jika tidak diubah)</label>
-            <input
-              type="password"
-              name="password"
-              className="form-control"
-              onChange={handleChange}
-            />
+        <div className="card shadow">
+          <div className="card-body">
+            <form onSubmit={handleSubmit}>
+              <div className="mb-3">
+                <label className="form-label">Username</label>
+                <input
+                  type="text"
+                  name="username"
+                  value={formData.username}
+                  className="form-control"
+                  required
+                  onChange={handleChange}
+                  disabled={!isEditable}
+                />
+                {errors.username && <div className="invalid-feedback">{errors.username}</div>}
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label">Password (Kosongkan jika tidak diubah)</label>
+                <input
+                  type="password"
+                  name="password"
+                  className="form-control"
+                  onChange={handleChange}
+                  disabled={!isEditable}
+                />
+                {errors.password && <div className="invalid-feedback">{errors.password}</div>}
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label">Role</label>
+                <input
+                  type="text"
+                  name="role"
+                  value={formData.role}
+                  className="form-control"
+                  onChange={handleChange}
+                  disabled={!isEditable}
+                />
+                {errors.role && <div className="invalid-feedback">{errors.role}</div>}
+              </div>
+
+              {isEditable ? (
+                <button type="submit" className="btn btn-primary">
+                  <i className="fas fa-save me-1"></i> Simpan Perubahan
+                </button>
+              ) : (
+                <button type="button" className="btn btn-secondary" onClick={() => setIsEditable(true)}>
+                  <i className="fas fa-edit me-1"></i> Ubah
+                </button>
+              )}
+            </form>
           </div>
-
-          <div className="mb-3">
-            <label>Role</label>
-            <input
-              type="text"
-              name="role"
-              value={formData.role}
-              className="form-control"
-              onChange={handleChange}
-            />
-          </div>
-
-          <button type="submit" className="btn btn-primary">Update</button>
-        </form>
+        </div>
       </div>
-
-      <ModalDialog
-        show={modal.show}
-        title={modal.title}
-        message={modal.message}
-        isSuccess={modal.isSuccess}
-        onClose={() => setModal(prev => ({ ...prev, show: false }))}
-      />
+      {toast.show && (
+        <div className="position-fixed bottom-0 end-0 p-3" style={{ zIndex: 1060 }}>
+          <div className={`toast show text-white ${toast.isSuccess ? 'bg-success' : 'bg-danger'} border-0`}>
+            <div className="d-flex">
+              <div className="toast-body">{toast.message}</div>
+              <button
+                type="button"
+                className="btn-close btn-close-white me-2 m-auto"
+                onClick={() => setToast(prev => ({ ...prev, show: false }))}
+              ></button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import api from '../../api';
 import { useNavigate } from 'react-router-dom';
+import ModalDialog from '../../Components/ModalDialog';
 
 export default function InventoryList() {
   const [inventories, setInventories] = useState([]);
@@ -15,7 +16,9 @@ export default function InventoryList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteId, setDeleteId] = useState(null);
+
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showSnackbar, setShowSnackbar] = useState(false);
 
   const navigate = useNavigate();
 
@@ -67,6 +70,7 @@ export default function InventoryList() {
       setShowConfirm(false);
       setDeleteId(null);
       fetchInventories();
+      setShowSnackbar(true);
     } catch (error) {
       console.error('Delete failed:', error);
     }
@@ -168,7 +172,15 @@ export default function InventoryList() {
                         </tr>
                       ) : (
                         paginatedInventories.map(item => (
-                          <tr key={item.id}>
+                          <tr
+                            key={item.id}
+                            style={{ cursor: 'pointer' }}
+                            onClick={(e) => {
+                              // Prevent row click if delete button is clicked
+                              if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+                              navigate(`/inventory/edit/${item.id}`);
+                            }}
+                          >
                             <td>{item.name}</td>
                             <td>{item.quantity}</td>
                             <td>{item.condition}</td>
@@ -177,16 +189,10 @@ export default function InventoryList() {
                             <td>{new Date(item.updated_at).toLocaleDateString()}</td>
                             <td>
                               <button
-                                className="btn btn-sm btn-warning me-2"
-                                onClick={() => navigate(`/inventory/edit/${item.id}`)}
-                              >
-                                Edit
-                              </button>
-                              <button
                                 className="btn btn-sm btn-danger"
                                 onClick={() => confirmDelete(item.id)}
                               >
-                                Hapus
+                                <i className="fas fa-trash"></i>
                               </button>
                             </td>
                           </tr>
@@ -221,31 +227,19 @@ export default function InventoryList() {
                   <nav>
                     <ul className="pagination mb-0">
                       <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                        <button
-                          className="page-link"
-                          onClick={() => setCurrentPage(currentPage - 1)}
-                        >
+                        <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)}>
                           &laquo;
                         </button>
                       </li>
                       {Array.from({ length: totalPages }, (_, i) => (
-                        <li
-                          key={i + 1}
-                          className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}
-                        >
-                          <button
-                            className="page-link"
-                            onClick={() => setCurrentPage(i + 1)}
-                          >
+                        <li key={i + 1} className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}>
+                          <button className="page-link" onClick={() => setCurrentPage(i + 1)}>
                             {i + 1}
                           </button>
                         </li>
                       ))}
                       <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                        <button
-                          className="page-link"
-                          onClick={() => setCurrentPage(currentPage + 1)}
-                        >
+                        <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)}>
                           &raquo;
                         </button>
                       </li>
@@ -257,35 +251,43 @@ export default function InventoryList() {
           </div>
         </div>
 
-        {/* Confirm Delete Modal */}
+        {/* Confirmation Modal */}
+        <ModalDialog
+          show={showConfirm}
+          title="Konfirmasi Hapus"
+          message="Apakah Anda yakin ingin menghapus data inventaris ini?"
+          isSuccess={false}
+          onClose={() => setShowConfirm(false)}
+          footer={
+            <>
+              <button className="btn btn-secondary" onClick={() => setShowConfirm(false)}>
+                Batal
+              </button>
+              <button className="btn btn-danger" onClick={handleDelete}>
+                Hapus
+              </button>
+            </>
+          }
+        />
+
+        {/* Snackbar */}
         <div
-          className={`modal fade ${showConfirm ? 'show d-block' : ''}`}
-          tabIndex="-1"
-          role="dialog"
-          aria-hidden={!showConfirm}
-          style={showConfirm ? { backgroundColor: 'rgba(0,0,0,0.5)' } : {}}
+          className={`toast-container position-fixed bottom-0 end-0 p-3`}
+          style={{ zIndex: 9999 }}
         >
-          <div className="modal-dialog modal-dialog-centered" role="document">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Konfirmasi Hapus</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowConfirm(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                Apakah Anda yakin ingin menghapus data inventaris ini?
-              </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setShowConfirm(false)}>
-                  Batal
-                </button>
-                <button className="btn btn-danger" onClick={handleDelete}>
-                  Hapus
-                </button>
-              </div>
+          <div
+            className={`toast align-items-center text-white bg-success ${showSnackbar ? 'show' : ''}`}
+            role="alert"
+            aria-live="assertive"
+            aria-atomic="true"
+          >
+            <div className="d-flex">
+              <div className="toast-body">Data inventaris berhasil dihapus</div>
+              <button
+                type="button"
+                className="btn-close btn-close-white me-2 m-auto"
+                onClick={() => setShowSnackbar(false)}
+              ></button>
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import AdminLayout from "../../layouts/AdminLayout";
 import axios from "axios";
+import { useNavigate } from 'react-router-dom';
 
 export default function BulkImportInventory() {
   const [file, setFile] = useState(null);
@@ -9,6 +10,8 @@ export default function BulkImportInventory() {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [loadingImport, setLoadingImport] = useState(false);
   const [importResult, setImportResult] = useState(null);
+
+  const navigate = useNavigate();
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -69,10 +72,18 @@ export default function BulkImportInventory() {
   return (
     <AdminLayout>
       <div className="container-fluid px-4">
-        <h1 className="h3 text-gray-800 mb-4">
-          <i className="fas fa-boxes-stacked me-2"></i> Bulk Import Inventory
-        </h1>
-
+        <div className="d-flex justify-content-between align-items-left mb-4">
+          <h1 className="h3 text-gray-800">
+            <i className="fas fa-boxes-stacked me-2"></i> Bulk Import Inventory
+          </h1>
+          <button
+            type="button"
+            className="btn btn-warning"
+            onClick={() => navigate('/inventory')} // or your preferred url
+          >
+            <i className="fas fa-arrow-left me-1"></i> Kembali
+          </button>
+        </div>
         <div className="mb-3">
           <input type="file" accept=".xlsx,.xls" className="form-control" onChange={handleFileChange} />
         </div>

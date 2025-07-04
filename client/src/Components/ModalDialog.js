@@ -1,8 +1,7 @@
-// client/src/components/ModalDialog.js
 import React from 'react';
 
-const ModalDialog = ({ show, title, message, onClose, isSuccess = true }) => {
-  if (!show) return null; // ✅ prevents rendering unless needed
+const ModalDialog = ({ show, title, message, onClose, isSuccess = true, footer = null }) => {
+  if (!show) return null;
 
   return (
     <div
@@ -28,9 +27,13 @@ const ModalDialog = ({ show, title, message, onClose, isSuccess = true }) => {
             <p>{message}</p>
           </div>
           <div className="modal-footer">
-            <button onClick={onClose} className="btn btn-secondary">
-              Tutup
-            </button>
+            {footer ? (
+              footer
+            ) : (
+              <button onClick={onClose} className="btn btn-secondary">
+                Tutup
+              </button>
+            )}
           </div>
         </div>
       </div>

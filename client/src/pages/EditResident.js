@@ -5,20 +5,15 @@ import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
 import countries from '../utils/countries';
 import occupations from '../utils/occupations';
-import ModalDialog from '../Components/ModalDialog';
 
 export default function EditResident() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const isViewMode = location.pathname.includes('/view/');
+  const [error, setError] = useState('');
   const [isEditable, setIsEditable] = useState(!isViewMode);
-  const [modal, setModal] = useState({
-    show: false,
-    title: '',
-    message: '',
-    isSuccess: true
-  });
+  const [toast, setToast] = useState({ show: false, message: '', isError: false });
 
   const [form, setForm] = useState({
     full_name: '',
@@ -42,8 +37,6 @@ export default function EditResident() {
 
   const [households, setHouseholds] = useState([]);
   const [fieldErrors, setFieldErrors] = useState({});
-  const [error, setError] = useState('');
-  const [showSuccess, setShowSuccess] = useState(false);
   const selectedHousehold = households.find(h => h.kk_number === form.kk_number);
   const isStatusLocked = selectedHousehold?.status_kepemilikan_rumah === 'pemilik belum pindah';
 
@@ -106,6 +99,13 @@ export default function EditResident() {
     }
   }, [form.kk_number, households]);
 
+  useEffect(() => {
+    if (toast.show) {
+      const timer = setTimeout(() => setToast({ show: false, message: '', isError: false }), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
   const handleChange = (e) => {
     if (!isEditable) return;
     const { name, value } = e.target;
@@ -119,7 +119,12 @@ export default function EditResident() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const required = ['full_name', 'nik', 'kk_number', 'gender', 'birthplace', 'birthdate', 'religion', 'marital_status', 'relationship', 'citizenship', 'address_id', 'status'];
+
+    const required = [
+      'full_name', 'nik', 'kk_number', 'gender', 'birthplace', 'birthdate',
+      'religion', 'marital_status', 'relationship', 'citizenship', 'address_id', 'status'
+    ];
+
     const errors = {};
     required.forEach((field) => {
       if (!form[field] || form[field].toString().trim() === '') {
@@ -133,35 +138,42 @@ export default function EditResident() {
 
     if (Object.keys(errors).length) {
       setFieldErrors(errors);
-      setModal({
+      setToast({
         show: true,
-        title: 'Gagal',
         message: 'Harap isi bagian yang wajib!',
-        isSuccess: false
+        isError: true,
       });
       return;
     }
 
     try {
       await api.put(`/residents/${id}`, form);
-      setModal({
+      setToast({
         show: true,
-        title: 'Berhasil',
-        message: '✅ Data warga berhasil diperbarui.',
-        isSuccess: true
+        message: 'Data warga berhasil diperbarui.',
+        isError: false,
       });
-      setTimeout(() => {
-        setModal(prev => ({ ...prev, show: false }));
-        navigate('/residents');
-      }, 1500);
+      setTimeout(() => navigate('/residents'), 2000);
     } catch (err) {
       console.error('Update error:', err);
-      setModal({
-        show: true,
-        title: 'Gagal',
-        message: '❌ Gagal memperbarui data.',
-        isSuccess: false
-      });
+
+      // Check if backend sent duplicate NIK error
+      const errMsg = err.response?.data?.error || err.message || '❌ Gagal memperbarui data.';
+
+      if (errMsg === 'NIK sudah digunakan oleh warga lain') {
+        setFieldErrors(prev => ({ ...prev, nik: errMsg }));
+        setToast({
+          show: true,
+          message: errMsg,
+          isError: true,
+        });
+      } else {
+        setToast({
+          show: true,
+          message: errMsg,
+          isError: true,
+        });
+      }
     }
   };
 
@@ -175,18 +187,20 @@ export default function EditResident() {
             <i className="fas fa-user-edit me-2"></i>
             {isViewMode && !isEditable ? 'Detail Warga' : 'Edit Warga'}
           </h1>
-          {isViewMode && !isEditable && (
-            <button className="btn btn-primary" onClick={() => setIsEditable(true)}>
-              <i className="fas fa-edit me-1"></i> Ubah
+          <div className="d-flex gap-2">
+            {!isEditable && (
+              <button className="btn btn-primary" onClick={() => setIsEditable(true)}>
+                <i className="fas fa-edit me-1"></i> Ubah
+              </button>
+            )}
+            <button type="button" className="btn btn-secondary" onClick={() => navigate('/residents')}>
+              <i className="fas fa-arrow-left me-1"></i> Kembali
             </button>
-          )}
+          </div>
         </div>
-
         <div className="card shadow mb-4">
           <div className="card-body">
-            {showSuccess && <div className="alert alert-success">Data berhasil diperbarui!</div>}
             {error && <div className="alert alert-danger">{error}</div>}
-
             <form onSubmit={handleSubmit}>
               {/* Name and NIK */}
               <div className="row">
@@ -355,20 +369,26 @@ export default function EditResident() {
                   {fieldErrors.status_remarks && <div className="invalid-feedback">{fieldErrors.status_remarks}</div>}
                 </div>
               )}
-
-              <button type="submit" className="btn btn-primary" disabled={!isEditable}>Simpan Perubahan</button>
-              <button type="button" className="btn btn-secondary ms-2" onClick={() => navigate('/residents')}>Kembali</button>
+              {isEditable && (
+                <button type="submit" className="btn btn-primary">
+                  <i className="fas fa-save me-1"></i> Simpan Perubahan
+                </button>
+              )}
             </form>
           </div>
         </div>
       </div>
-      <ModalDialog
-        show={modal.show}
-        title={modal.title}
-        message={modal.message}
-        isSuccess={modal.isSuccess}
-        onClose={() => setModal(prev => ({ ...prev, show: false }))}
-      />
+      {toast.show && (
+        <div
+          className={`toast align-items-center text-white border-0 position-fixed bottom-0 end-0 m-4 show ${toast.isError ? 'bg-danger' : 'bg-success'}`}
+          role="alert"
+          style={{ zIndex: 9999 }}
+        >
+          <div className="d-flex">
+            <div className="toast-body">{toast.message}</div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

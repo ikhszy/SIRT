@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import api from '../../api';
 import { useNavigate } from 'react-router-dom';
+import ModalDialog from '../../Components/ModalDialog';
 
 export default function KeuanganTab() {
   const [transactions, setTransactions] = useState([]);
@@ -9,6 +10,12 @@ export default function KeuanganTab() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [confirmModal, setConfirmModal] = useState({
+    show: false,
+    id: null,
+    type: '',
+  });
+  const [showSnackbar, setShowSnackbar] = useState(false);
   const navigate = useNavigate();
 
   // Debounce search input (wait 300ms after user stops typing)
@@ -39,14 +46,17 @@ export default function KeuanganTab() {
     fetchTransactions();
   }, [fetchTransactions]);
 
-  const handleDelete = async (id, type) => {
-    if (!window.confirm('Delete this transaction?')) return;
+  const handleConfirmedDelete = async () => {
+    const { id, type } = confirmModal;
     try {
       await api.delete(`/finance/${type.toLowerCase()}/${id}`);
       fetchTransactions();
+      setShowSnackbar(true);
     } catch (error) {
       alert('Failed to delete transaction.');
       console.error(error);
+    } finally {
+      setConfirmModal({ show: false, id: null, type: '' });
     }
   };
 
@@ -98,7 +108,11 @@ export default function KeuanganTab() {
             <tbody>
               {paginated.length > 0 ? (
                 paginated.map(t => (
-                  <tr key={`${t.type}-${t.id}`}>
+                  <tr
+                    key={`${t.type}-${t.id}`}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/finance/edit/${t.type.toLowerCase()}/${t.id}`)}
+                  >
                     <td>{new Date(t.transactionDate).toLocaleDateString('id-ID')}</td>
                     <td>{t.remarks}</td>
                     <td>
@@ -113,18 +127,13 @@ export default function KeuanganTab() {
                     <td>{Number(t.transactionAmount).toLocaleString('id-ID')}</td>
                     <td>
                       <button
-                        className="btn btn-warning btn-sm me-2"
-                        onClick={() =>
-                          navigate(`/finance/edit/${t.type.toLowerCase()}/${t.id}`)
-                        }
-                      >
-                        Edit
-                      </button>
-                      <button
                         className="btn btn-danger btn-sm"
-                        onClick={() => handleDelete(t.id, t.type)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // ✅ Prevents row click
+                          setConfirmModal({ show: true, id: t.id, type: t.type });
+                        }}
                       >
-                        Delete
+                        <i className="fas fa-trash"></i>
                       </button>
                     </td>
                   </tr>
@@ -211,6 +220,46 @@ export default function KeuanganTab() {
           </nav>
         </div>
       </div>
+      <ModalDialog
+        show={confirmModal.show}
+        title="Konfirmasi Hapus"
+        message="Apakah Anda yakin ingin menghapus transaksi ini?"
+        onClose={() => setConfirmModal({ show: false, id: null, type: '' })}
+        isSuccess={false}
+        footer={
+          <>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setConfirmModal({ show: false, id: null, type: '' })}
+            >
+              Batal
+            </button>
+            <button className="btn btn-danger" onClick={handleConfirmedDelete}>
+              Hapus
+            </button>
+          </>
+        }
+      />
+
+      {showSnackbar && (
+        <div
+          className="position-fixed bottom-0 end-0 p-3"
+          style={{ zIndex: 1060 }}
+        >
+          <div className="toast show align-items-center text-white bg-success border-0 shadow">
+            <div className="d-flex">
+              <div className="toast-body">
+                Data keuangan berhasil dihapus
+              </div>
+              <button
+                type="button"
+                className="btn-close btn-close-white me-2 m-auto"
+                onClick={() => setShowSnackbar(false)}
+              ></button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

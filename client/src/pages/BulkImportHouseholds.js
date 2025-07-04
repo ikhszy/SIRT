@@ -94,10 +94,18 @@ export default function BulkImportHouseholds() {
   return (
     <AdminLayout>
       <div className="container-fluid px-4">
-        <h1 className="h3 text-gray-800 mb-4">
-          <i className="fas fa-file-upload me-2"></i> Bulk Import Households
-        </h1>
-
+        <div className="d-flex justify-content-between align-items-left mb-4">
+          <h1 className="h3 text-gray-800">
+            <i className="fas fa-file-upload me-2"></i> Bulk Import Households
+          </h1>
+          <button
+            type="button"
+            className="btn btn-warning"
+            onClick={() => navigate('/households')} // or your preferred url
+          >
+            <i className="fas fa-arrow-left me-1"></i> Kembali
+          </button>
+        </div>
         <div className="mb-3">
           <input
             type="file"

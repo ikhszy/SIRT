@@ -13,6 +13,10 @@
   }
 }
 
+.table-row-hover:hover {
+  background-color: #f2f2f2;
+}
+
 .App-header {
   background-color: #282c34;
   min-height: 100vh;

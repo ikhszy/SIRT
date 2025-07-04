@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
+import ModalDialog from '../Components/ModalDialog';
 
 export default function Addresses() {
   const [addresses, setAddresses] = useState([]);
@@ -12,21 +13,27 @@ export default function Addresses() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  console.log("✅ Addresses component mounted");
+  // Modal state for delete confirmation
+  const [confirmModal, setConfirmModal] = useState({
+    show: false,
+    id: null,
+  });
+
+  // Snackbar state
+  const [showSnackbar, setShowSnackbar] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [addrRes, settingsRes] = await Promise.all([
           api.get('/address'),
-          api.get('/settings')
+          api.get('/settings'),
         ]);
         setAddresses(addrRes.data);
         setSettings(settingsRes.data);
       } catch (err) {
         console.error("Failed to fetch address/settings:", err);
         alert("Gagal memuat data alamat. Coba login ulang jika masalah terus berlanjut.");
-        // Optional: redirect to dashboard instead of crashing
         navigate("/dashboard");
       }
     };
@@ -34,10 +41,24 @@ export default function Addresses() {
     fetchData();
   }, []);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this address?')) return;
-    await api.delete(`/address/${id}`);
-    setAddresses(addresses.filter((a) => a.id !== id));
+  // Show confirmation modal instead of window.confirm
+  const confirmDelete = (id) => {
+    setConfirmModal({ show: true, id });
+  };
+
+  // Handle confirmed delete
+  const handleConfirmedDelete = async () => {
+    try {
+      await api.delete(`/address/${confirmModal.id}`);
+      setAddresses(addresses.filter((a) => a.id !== confirmModal.id));
+      setShowSnackbar(true);
+      setTimeout(() => setShowSnackbar(false), 3000);
+    } catch (err) {
+      alert("Gagal menghapus alamat");
+      console.error(err);
+    } finally {
+      setConfirmModal({ show: false, id: null });
+    }
   };
 
   const filtered = addresses.filter((a) =>
@@ -93,23 +114,24 @@ export default function Addresses() {
               <tbody>
                 {paginatedAddresses.length > 0 && settings ? (
                   paginatedAddresses.map((a) => (
-                    <tr key={a.id}>
+                    <tr
+                      key={a.id}
+                      className="table-row-hover"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => navigate(`/addresses/edit/${a.id}`)}
+                    >
+                      <td>{a.full_address}</td>
                       <td>
-                        {a.full_address}
-                      </td>
-                      <td>
+                        {/* Delete button should not trigger row navigation */}
                         <button
-                          className="btn btn-sm btn-warning me-2"
-                          onClick={() => navigate(`/addresses/edit/${a.id}`)}
+                          className="btn btn-sm btn-danger"
+                          onClick={(e) => {
+                            e.stopPropagation(); // prevent tr onClick
+                            confirmDelete(a.id);
+                          }}
                         >
-                          <i className="fas fa-edit"></i>
+                          <i className="fas fa-trash"></i>
                         </button>
-                        <button
-                            className="btn btn-sm btn-danger"
-                            onClick={() => handleDelete(a.id)}
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
                       </td>
                     </tr>
                   ))
@@ -142,15 +164,20 @@ export default function Addresses() {
                   style={{ width: 'auto' }}
                 >
                   {[5, 10, 25, 50, 100].map((num) => (
-                    <option key={num} value={num}>{num}</option>
+                    <option key={num} value={num}>
+                      {num}
+                    </option>
                   ))}
                 </select>
               </div>
- 
+
               <nav>
                 <ul className="pagination mb-0">
                   <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                    <button className="page-link" onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}>
+                    <button
+                      className="page-link"
+                      onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                    >
                       &laquo;
                     </button>
                   </li>
@@ -165,7 +192,10 @@ export default function Addresses() {
                     </li>
                   ))}
                   <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                    <button className="page-link" onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}>
+                    <button
+                      className="page-link"
+                      onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                    >
                       &raquo;
                     </button>
                   </li>
@@ -174,6 +204,47 @@ export default function Addresses() {
             </div>
           </div>
         </div>
+
+        {/* ModalDialog for confirmation */}
+        <ModalDialog
+          show={confirmModal.show}
+          title="Konfirmasi Hapus"
+          message="Apakah Anda yakin ingin menghapus alamat ini?"
+          onClose={() => setConfirmModal({ show: false, id: null })}
+          isSuccess={false}
+          footer={
+            <>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setConfirmModal({ show: false, id: null })}
+              >
+                Batal
+              </button>
+              <button className="btn btn-danger" onClick={handleConfirmedDelete}>
+                Hapus
+              </button>
+            </>
+          }
+        />
+
+        {/* Snackbar notification */}
+        {showSnackbar && (
+          <div
+            className="position-fixed bottom-0 end-0 p-3"
+            style={{ zIndex: 1060 }}
+          >
+            <div className="toast show align-items-center text-white bg-success border-0 shadow">
+              <div className="d-flex">
+                <div className="toast-body">Data alamat berhasil dihapus</div>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white me-2 m-auto"
+                  onClick={() => setShowSnackbar(false)}
+                ></button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AdminLayout>
   );

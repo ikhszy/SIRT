@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../api';
+import logo from '../logo.svg'; // <-- make sure this path is correct
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -20,10 +21,14 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
 
+    if (!username.trim() || !password.trim()) {
+      setError('Username dan password tidak boleh kosong');
+      return;
+    }
+
     try {
       const res = await api.post('/login', { username, password });
 
-      // Save token with 'Bearer' prefix for consistency
       localStorage.setItem('token', `Bearer ${res.data.token}`);
       navigate('/dashboard');
     } catch (err) {
@@ -38,8 +43,9 @@ export default function LoginPage() {
         <div className="col-xl-6 col-lg-8 col-md-9">
           <div className="card o-hidden border-0 shadow-lg">
             <div className="card-body p-5">
-              <div className="text-center">
-                <h1 className="h4 text-gray-900 mb-4">Welcome Back!</h1>
+              <div className="text-center mb-4 d-flex align-items-center justify-content-center gap-2">
+                <img src={logo} alt="Logo" style={{ width: '40px', height: '40px', marginRight: '10px' }} />
+                <h1 className="h4 text-gray-900 mb-0">Selamat Datang!</h1>
               </div>
 
               {error && (
@@ -53,30 +59,28 @@ export default function LoginPage() {
                   <input
                     type="text"
                     className="form-control form-control-user"
-                    placeholder="Enter Username..."
+                    placeholder="username..."
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    required
                   />
                 </div>
                 <div className="form-group mb-3">
                   <input
                     type="password"
                     className="form-control form-control-user"
-                    placeholder="Password"
+                    placeholder="password..."
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    required
                   />
                 </div>
 
                 <button type="submit" className="btn btn-primary btn-user btn-block w-100">
-                  Login
+                  MASUK
                 </button>
               </form>
 
               <hr />
-              <div className="text-center text-muted small">RT DIGITAL LOGIN</div>
+              <div className="text-center text-muted small">Hubungi admin untuk mendapatkan akun</div>
             </div>
           </div>
         </div>

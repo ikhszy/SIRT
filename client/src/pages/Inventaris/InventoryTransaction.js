@@ -232,11 +232,7 @@ export default function InventoryTransaction() {
                         {t.transaction_type === "borrow" ? "Pinjam" : "Kembali"}
                       </span>
                     </td>
-                    <td>
-                      {t.borrower_type === "warga"
-                        ? t.borrower_name_resident
-                        : t.borrower_name}
-                    </td>
+                    <td>{t.borrower_display_name}</td>
                     <td>{t.condition}</td>
                     <td>{t.location}</td>
                     <td>{t.description || "-"}</td>

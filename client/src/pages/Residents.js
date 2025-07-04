@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
+import ModalDialog from '../Components/ModalDialog';
 
 export default function Residents() {
   const [residents, setResidents] = useState([]);
@@ -16,6 +17,12 @@ export default function Residents() {
   const [filterNIK, setFilterNIK] = useState('');
   const [filterGender, setFilterGender] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [confirmModal, setConfirmModal] = useState({
+    show: false,
+    residentId: null,
+    residentName: ''
+  });
+  const [showSnackbar, setShowSnackbar] = useState(false);
 
   useEffect(() => {
     const fetchResidents = async () => {
@@ -54,18 +61,27 @@ export default function Residents() {
     currentPage * itemsPerPage
   );
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this resident?')) return;
+  const confirmDelete = (residentId, fullName) => {
+    setConfirmModal({
+      show: true,
+      residentId,
+      residentName: fullName
+    });
+  };
 
+  const handleConfirmedDelete = async () => {
     try {
       const token = localStorage.getItem('token');
-      await api.delete(`/residents/${id}`, {
+      await api.delete(`/residents/${confirmModal.residentId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setResidents(residents.filter((r) => r.id !== id));
+      setResidents(residents.filter((r) => r.id !== confirmModal.residentId));
+      setShowSnackbar({ show: true, message: 'Data warga berhasil dihapus' });
     } catch (err) {
-      alert('Failed to delete');
+      alert('Gagal menghapus data');
       console.error(err);
+    } finally {
+      setConfirmModal({ show: false, residentId: null, residentName: '' });
     }
   };
 
@@ -173,7 +189,7 @@ export default function Residents() {
                         <td onClick={(e) => e.stopPropagation()}>
                           <button
                             className="btn btn-sm btn-danger"
-                            onClick={() => handleDelete(res.id)}
+                            onClick={() => confirmDelete(res.id, res.full_name)}
                           >
                             <i className="fas fa-trash"></i>
                           </button>
@@ -228,6 +244,45 @@ export default function Residents() {
           </div>
         </div>
       </div>
+      <ModalDialog
+        show={confirmModal.show}
+        title="Konfirmasi Hapus"
+        message={`Apakah Anda yakin ingin menghapus warga "${confirmModal.residentName}"?`}
+        onClose={() => setConfirmModal({ show: false, residentId: null, residentName: '' })}
+        isSuccess={false}
+        footer={
+          <>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setConfirmModal({ show: false, residentId: null, residentName: '' })}
+            >
+              Batal
+            </button>
+            <button className="btn btn-danger" onClick={handleConfirmedDelete}>
+              Hapus
+            </button>
+          </>
+        }
+      />
+      {showSnackbar && (
+        <div
+          className="position-fixed bottom-0 end-0 p-3"
+          style={{ zIndex: 1060 }}
+        >
+          <div className="toast show align-items-center text-white bg-success border-0 shadow">
+            <div className="d-flex">
+              <div className="toast-body">
+                Data warga berhasil dihapus
+              </div>
+              <button
+                type="button"
+                className="btn-close btn-close-white me-2 m-auto"
+                onClick={() => setShowSnackbar(false)}
+              ></button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }
