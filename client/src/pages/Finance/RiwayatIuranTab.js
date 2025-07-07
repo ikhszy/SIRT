@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api'; // adjust path if needed
+import Pagination from '../../Components/Pagination';
 
 const MONTHS = [
   { value: 1, label: 'Januari' },
@@ -31,6 +32,7 @@ export default function RiwayatIuranTab({ prefilledFilters }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
+  const [selectedStatus, setSelectedStatus] = useState('');
 
   // Fetch available addresses on mount
   useEffect(() => {
@@ -72,6 +74,7 @@ export default function RiwayatIuranTab({ prefilledFilters }) {
           month: selectedMonth.toString().padStart(2, '0'),
           year: selectedYear,
           addressId: selectedAddress || undefined,
+          status: selectedStatus || undefined,
         },
       });
       setData(res.data);
@@ -94,64 +97,82 @@ export default function RiwayatIuranTab({ prefilledFilters }) {
 
   return (
     <div>
-      <div className="row g-3 mb-3">
-        <div className="col-md-4">
-          <label htmlFor="address" className="form-label">Alamat</label>
-          <select
-            id="address"
-            className="form-select"
-            value={selectedAddress}
-            onChange={(e) => setSelectedAddress(e.target.value)}
-          >
-            <option value="">-- Pilih Alamat --</option>
-            {addresses.map((addr) => (
-              <option key={addr.id} value={addr.id}>
-                {addr.full_address}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="card mb-4">
+        <div className="card-body">
+          <div className="row row-cols-1 row-cols-md-4 g-3">
+            <div className="col">
+              <label htmlFor="address" className="form-label">Alamat</label>
+              <select
+                id="address"
+                className="form-select"
+                value={selectedAddress}
+                onChange={(e) => setSelectedAddress(e.target.value)}
+              >
+                <option value="">-- Pilih Alamat --</option>
+                {addresses.map((addr) => (
+                  <option key={addr.id} value={addr.id}>
+                    {addr.full_address}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        <div className="col-md-3">
-          <label htmlFor="month" className="form-label">Bulan</label>
-          <select
-            id="month"
-            className="form-select"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-          >
-            <option value="">-- Pilih Bulan --</option>
-            {MONTHS.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
-        </div>
+            <div className="col">
+              <label htmlFor="month" className="form-label">Bulan</label>
+              <select
+                id="month"
+                className="form-select"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+              >
+                <option value="">-- Pilih Bulan --</option>
+                {MONTHS.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
 
-        <div className="col-md-3">
-          <label htmlFor="year" className="form-label">Tahun</label>
-          <select
-            id="year"
-            className="form-select"
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-          >
-            <option value="">-- Pilih Tahun --</option>
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-        </div>
+            <div className="col">
+              <label htmlFor="year" className="form-label">Tahun</label>
+              <select
+                id="year"
+                className="form-select"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+              >
+                <option value="">-- Pilih Tahun --</option>
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
 
-        <div className="col-md-2 d-flex align-items-end">
-          <button
-            className="btn btn-primary w-100"
-            onClick={() => {
-              setCurrentPage(1);
-              handleSearch();
-            }}
-          >
-            Cari
-          </button>
+            <div className="col">
+              <label htmlFor="status" className="form-label">Status Pembayaran</label>
+              <select
+                id="status"
+                className="form-select"
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+              >
+                <option value="">-- Semua --</option>
+                <option value="paid">Bayar</option>
+                <option value="unpaid">Belum Bayar</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="d-flex justify-content-end mt-3">
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                setCurrentPage(1);
+                handleSearch();
+              }}
+            >
+              Cari
+            </button>
+          </div>
         </div>
       </div>
 
@@ -199,19 +220,11 @@ export default function RiwayatIuranTab({ prefilledFilters }) {
             </div>
 
             <nav>
-              <ul className="pagination mb-0">
-                <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={() => handlePageChange(currentPage - 1)}>&laquo;</button>
-                </li>
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <li key={i + 1} className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}>
-                    <button className="page-link" onClick={() => handlePageChange(i + 1)}>{i + 1}</button>
-                  </li>
-                ))}
-                <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={() => handlePageChange(currentPage + 1)}>&raquo;</button>
-                </li>
-              </ul>
+              <Pagination
+                totalPages={totalPages}
+                currentPage={currentPage}
+                onPageChange={(page) => setCurrentPage(page)}
+              />
             </nav>
           </div>
         </>

@@ -94,7 +94,13 @@ router.post("/preview", upload.single("file"), (req, res) => {
   const workbook = xlsx.readFile(filePath);
   const rows = xlsx.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
 
-  if (rows.length === 0) return cleanup(null, filePath, res, { success: true, data: [], errors: ["No data found."] });
+  if (rows.length === 0) {
+    return cleanup(null, filePath, res, {
+      success: true,
+      data: [],
+      errors: ["No data found."],
+    });
+  }
 
   const preview = [];
   const errors = [];
@@ -106,30 +112,71 @@ router.post("/preview", upload.single("file"), (req, res) => {
   let completed = 0;
   rows.forEach((row, index) => {
     const rowNumber = index + 2;
-    const data = extractFields(row, true);
+    const trimmed = (v) => (typeof v === "string" ? v.trim() : v ?? "");
 
+    // Extract and prepare relationship
+    let relationship = trimmed(row["Status dalam Keluarga"]);
+    const relationshipRemarks = trimmed(row["Keterangan Status Lainnya"]);
+    if (relationship.toLowerCase() === "lainnya") {
+      if (!relationshipRemarks) {
+        errors.push({ row: rowNumber, message: "Keterangan Lainnya wajib diisi jika Status dalam Keluarga adalah 'Lainnya'" });
+      }
+      relationship = `Lainnya - ${relationshipRemarks}`;
+    }
+
+    const data = {
+      full_name: trimmed(row["Nama Lengkap"]),
+      nik: trimmed(row["NIK"]),
+      kk_number: trimmed(row["Nomor KK"]),
+      gender: trimmed(row["Jenis Kelamin"]),
+      birthplace: trimmed(row["Tempat Lahir"]),
+      birthdate: trimmed(row["Tanggal Lahir"]),
+      blood_type: trimmed(row["Gol. Darah"]),
+      religion: trimmed(row["Agama"]),
+      marital_status: trimmed(row["Status Perkawinan"]),
+      relationship,
+      education: trimmed(row["Pendidikan Terakhir"]),
+      occupation: trimmed(row["Pekerjaan"]),
+      citizenship: trimmed(row["Kewarganegaraan"]),
+      status: trimmed(row["Status NIK"]),
+      status_remarks: trimmed(row["Alasan Tidak Aktif"]),
+    };
+
+    // Validation: minimal required fields
     if (!data.full_name || !data.nik || !data.kk_number) {
       errors.push({ row: rowNumber, message: "Kolom wajib di isi (Nama, NIK, KK)" });
-      if (++completed === rows.length) cleanup(db, filePath, res, { success: true, data: preview, errors });
+      if (++completed === rows.length)
+        cleanup(db, filePath, res, { success: true, data: preview, errors });
       return;
     }
 
-    db.get(`SELECT h.status_kepemilikan_rumah, a.id, a.full_address FROM households h JOIN address a ON h.address_id = a.id WHERE h.kk_number = ?`, [data.kk_number], (err, row) => {
-      if (err || !row) {
-        errors.push({ row: rowNumber, message: `Alamat tidak ditemukan untuk KK: ${data.kk_number}` });
-      } else {
-        const isOutsider = row.status_kepemilikan_rumah === 'pemilik belum pindah';
-        preview.push({
-          ...data,
-          status: isOutsider ? 'tidak aktif - domisili diluar' : data.status,
-          status_remarks: isOutsider ? '' : (data.status === 'tidak aktif - lainnya' ? data.status_remarks : ''),
-          address_id: row.id,
-          full_address: row.full_address,
-          row: rowNumber
-        });
+    // Household check
+    db.get(
+      `SELECT h.status_kepemilikan_rumah, a.id, a.full_address 
+       FROM households h 
+       JOIN address a ON h.address_id = a.id 
+       WHERE h.kk_number = ?`,
+      [data.kk_number],
+      (err, row) => {
+        if (err || !row) {
+          errors.push({ row: rowNumber, message: `Alamat tidak ditemukan untuk KK: ${data.kk_number}` });
+        } else {
+          const isOutsider = row.status_kepemilikan_rumah === "pemilik belum pindah";
+          preview.push({
+            ...data,
+            status: isOutsider ? "tidak aktif - domisili diluar" : data.status,
+            status_remarks: isOutsider ? "" : (data.status === "tidak aktif - lainnya" ? data.status_remarks : ""),
+            full_address: row.full_address,
+            address_id: row.id,
+            row: rowNumber,
+            relationship_remarks: relationship.startsWith("Lainnya - ") ? relationship.split("Lainnya - ")[1] : "",
+          });
+        }
+
+        if (++completed === rows.length)
+          cleanup(db, filePath, res, { success: true, data: preview, errors });
       }
-      if (++completed === rows.length) cleanup(db, filePath, res, { success: true, data: preview, errors });
-    });
+    );
   });
 });
 
@@ -140,54 +187,111 @@ router.post("/bulk", upload.single("file"), async (req, res) => {
   const workbook = xlsx.readFile(filePath);
   const rows = xlsx.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
 
-  if (rows.length === 0) return cleanup(null, filePath, res, { success: false, errors: ["No data found"] });
+  if (rows.length === 0) {
+    return cleanup(null, filePath, res, { success: false, errors: ["No data found"] });
+  }
 
   const db = new sqlite3.Database(DB_PATH, (err) => {
     if (err) return cleanup(db, filePath, res, { success: false, errors: ["DB error"] });
     db.run("PRAGMA foreign_keys = ON");
   });
 
-  const inserted = [], errors = [];
+  const inserted = [];
+  const errors = [];
+
   const tasks = rows.map((row, index) => new Promise((resolve) => {
     const rowNumber = index + 2;
-    const data = extractFields(row, false);
+    const trimmed = (v) => (typeof v === "string" ? v.trim() : v ?? "");
 
+    let relationship = trimmed(row["Status dalam Keluarga"]);
+    const relationshipRemarks = trimmed(row["Keterangan Status Lainnya"]);
+    if (relationship.toLowerCase() === "lainnya") {
+      if (!relationshipRemarks) {
+        errors.push({ row: rowNumber, message: "Keterangan Lainnya wajib diisi jika Status dalam Keluarga adalah 'Lainnya'" });
+        return resolve();
+      }
+      relationship = `Lainnya - ${relationshipRemarks}`;
+    }
+
+    const data = {
+      full_name: trimmed(row["Nama Lengkap"]),
+      nik: trimmed(row["NIK"]),
+      kk_number: trimmed(row["Nomor KK"]),
+      gender: trimmed(row["Jenis Kelamin"]),
+      birthplace: trimmed(row["Tempat Lahir"]),
+      birthdate: trimmed(row["Tanggal Lahir"]),
+      blood_type: trimmed(row["Gol. Darah"]),
+      religion: trimmed(row["Agama"]),
+      marital_status: trimmed(row["Status Perkawinan"]),
+      relationship,
+      education: trimmed(row["Pendidikan Terakhir"]),
+      occupation: trimmed(row["Pekerjaan"]),
+      citizenship: trimmed(row["Kewarganegaraan"]),
+      status: trimmed(row["Status NIK"]),
+      status_remarks: trimmed(row["Alasan Tidak Aktif"]),
+    };
+
+    // Basic validation
     if (!data.full_name || !data.nik || !data.kk_number) {
       errors.push({ row: rowNumber, message: "Kolom wajib kosong (Nama, NIK, KK)" });
       return resolve();
     }
 
+    // Check for duplicate NIK
     db.get("SELECT id FROM residents WHERE nik = ?", [data.nik], (err, found) => {
       if (err || found) {
         errors.push({ row: rowNumber, message: found ? "NIK sudah terdaftar" : "DB error saat cek NIK" });
         return resolve();
       }
-      db.get(`SELECT h.status_kepemilikan_rumah, a.id FROM households h JOIN address a ON h.address_id = a.id WHERE h.kk_number = ?`, [data.kk_number], (err, addr) => {
-        if (err || !addr) {
-          errors.push({ row: rowNumber, message: `Alamat tidak ditemukan untuk KK: ${data.kk_number}` });
-          return resolve();
-        }
 
-        const isOutsider = addr.status_kepemilikan_rumah === 'pemilik belum pindah';
-        const status = isOutsider ? 'tidak aktif - domisili diluar' : data.status;
-        const status_remarks = isOutsider ? '' : (data.status === 'tidak aktif - lainnya' ? data.status_remarks : null);
-
-        const query = `INSERT INTO residents (full_name, nik, kk_number, gender, birthplace, birthdate, blood_type, religion, marital_status, relationship, education, occupation, citizenship, address_id, status, status_remarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-        const values = [
-          data.full_name, data.nik, data.kk_number, data.gender, data.birthplace, data.birthdate,
-          data.blood_type, data.religion, data.marital_status, data.relationship,
-          data.education, data.occupation, data.citizenship, addr.id, status, status_remarks
-        ];
-
-        db.run(query, values, function (err) {
-          if (err) {
-            errors.push({ row: rowNumber, message: `Insert error: ${err.message}` });
-          } else {
-            inserted.push({ row: rowNumber, nik: data.nik, id: this.lastID });
+      // Check KK exists and get address
+      db.get(`SELECT h.status_kepemilikan_rumah, a.id 
+              FROM households h 
+              JOIN address a ON h.address_id = a.id 
+              WHERE h.kk_number = ?`,
+        [data.kk_number],
+        (err, addr) => {
+          if (err || !addr) {
+            errors.push({ row: rowNumber, message: `Alamat tidak ditemukan untuk KK: ${data.kk_number}` });
+            return resolve();
           }
-          resolve();
+
+          const isOutsider = addr.status_kepemilikan_rumah === "pemilik belum pindah";
+          const status = isOutsider ? "tidak aktif - domisili diluar" : data.status;
+          const status_remarks = isOutsider ? "" : (data.status === "tidak aktif - lainnya" ? data.status_remarks : null);
+
+          const query = `INSERT INTO residents 
+            (full_name, nik, kk_number, gender, birthplace, birthdate, blood_type, religion, marital_status, relationship, education, occupation, citizenship, address_id, status, status_remarks) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+          const values = [
+            data.full_name,
+            data.nik,
+            data.kk_number,
+            data.gender,
+            data.birthplace,
+            data.birthdate,
+            data.blood_type,
+            data.religion,
+            data.marital_status,
+            data.relationship,
+            data.education,
+            data.occupation,
+            data.citizenship,
+            addr.id,
+            status,
+            status_remarks
+          ];
+
+          db.run(query, values, function (err) {
+            if (err) {
+              errors.push({ row: rowNumber, message: `Insert error: ${err.message}` });
+            } else {
+              inserted.push({ row: rowNumber, nik: data.nik, id: this.lastID });
+            }
+            resolve();
+          });
         });
-      });
     });
   }));
 

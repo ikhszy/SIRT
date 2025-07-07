@@ -11,12 +11,20 @@ export function groupResidentsByAge(residents) {
     if (!res.birthdate) return;
 
     const birthDate = new Date(res.birthdate);
-    const age = now.getFullYear() - birthDate.getFullYear();
+    let age = now.getFullYear() - birthDate.getFullYear();
 
-    if (age <= 12) ageGroups.anak++;
-    else if (age <= 17) ageGroups.remaja++;
-    else if (age <= 59) ageGroups.dewasa++;
-    else ageGroups.lansia++;
+    // Adjust if birthday hasn’t occurred yet this year
+    const hasHadBirthdayThisYear =
+      now.getMonth() > birthDate.getMonth() ||
+      (now.getMonth() === birthDate.getMonth() && now.getDate() >= birthDate.getDate());
+    if (!hasHadBirthdayThisYear) {
+      age--;
+    }
+
+    if (age >= 0 && age <= 12) ageGroups.anak++;
+    else if (age >= 13 && age <= 17) ageGroups.remaja++;
+    else if (age >= 18 && age <= 59) ageGroups.dewasa++;
+    else if (age >= 60) ageGroups.lansia++;
   });
 
   return ageGroups;

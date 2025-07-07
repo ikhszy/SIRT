@@ -3,11 +3,15 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import AdminLayout from '../layouts/AdminLayout';
 import ModalDialog from '../Components/ModalDialog';
+import Pagination from '../Components/Pagination';
 
 export default function UsersList() {
   const [users, setUsers] = useState([]);
   const [confirmModal, setConfirmModal] = useState({ show: false, userId: null, username: '' });
   const [showSnackbar, setShowSnackbar] = useState(false);
+  const [page, setPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -16,7 +20,13 @@ export default function UsersList() {
         Authorization: token
       }
     })
-    .then(res => setUsers(res.data))
+    .then(res => {
+      const allUsers = res.data;
+      const startIndex = (page - 1) * itemsPerPage;
+      const paginated = allUsers.slice(startIndex, startIndex + itemsPerPage);
+      setUsers(paginated);
+      setTotalPages(Math.ceil(allUsers.length / itemsPerPage));
+    })
     .catch(err => {
       console.error(err);
       if (err.response?.status === 401) {
@@ -24,7 +34,7 @@ export default function UsersList() {
         window.location.href = "/login";
       }
     });
-  }, []);
+  }, [page, itemsPerPage]);
 
   const confirmDelete = (userId, username) => {
     setConfirmModal({ show: true, userId, username });
@@ -101,6 +111,34 @@ export default function UsersList() {
                   )}
                 </tbody>
               </table>
+              <div className="d-flex justify-content-between align-items-center mt-3">
+                <div>
+                  Menampilkan {(page - 1) * itemsPerPage + 1} - {Math.min(page * itemsPerPage, users.length)} dari {users.length} pengguna
+                </div>
+
+                <div className="d-flex align-items-center">
+                  <label className="me-2">Data per halaman:</label>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(parseInt(e.target.value));
+                      setPage(1);
+                    }}
+                    className="form-select form-select-sm"
+                    style={{ width: 'auto' }}
+                  >
+                    {[5, 10, 25, 50].map(num => (
+                      <option key={num} value={num}>{num}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <Pagination
+                  totalPages={totalPages}
+                  currentPage={page}
+                  onPageChange={(newPage) => setPage(newPage)}
+                />
+              </div>
             </div>
           </div>
         </div>

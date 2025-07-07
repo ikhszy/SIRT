@@ -191,10 +191,10 @@ export default function AddHousehold() {
                   onChange={handleChange}
                 >
                   <option value="">-- Pilih Status Kepemilikan --</option>
-                  <option value="pemilik">Pemilik</option>
-                  <option value="pemilik belum pindah">Pemilik (Belum pindah alamat)</option>
-                  <option value="sewa">Kontrak / Sewa</option>
-                  <option value="numpang alamat">Numpang Alamat</option>
+                  <option value="Pemilik">Pemilik</option>
+                  <option value="Pemilik belum pindah">Pemilik (Belum pindah alamat)</option>
+                  <option value="Sewa">Kontrak / Sewa</option>
+                  <option value="Numpang Alamat">Numpang Alamat</option>
                 </select>
                 {fieldErrors.status_kepemilikan_rumah && (
                   <div className="invalid-feedback">{fieldErrors.status_kepemilikan_rumah}</div>

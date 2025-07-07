@@ -27,6 +27,7 @@ export default function EditResident() {
     religion: '',
     marital_status: '',
     relationship: '',
+    relationship_remarks: '',
     education: '',
     occupation: '',
     citizenship: 'Indonesia',
@@ -62,7 +63,12 @@ export default function EditResident() {
     const fetchResident = async () => {
       try {
         const res = await api.get(`/residents/${id}`);
-        setForm(res.data);
+        const fetched = res.data;
+        if (fetched.relationship?.startsWith('Lainnya - ')) {
+          setForm({ ...fetched, relationship: 'Lainnya', relationship_remarks: fetched.relationship.replace('Lainnya - ', '') });
+        } else {
+          setForm(fetched);
+        }
       } catch (err) {
         console.error('Failed to fetch resident:', err);
       }
@@ -136,6 +142,14 @@ export default function EditResident() {
       errors.status_remarks = 'Harus diisi untuk status lainnya';
     }
 
+    if (
+      form.relationship === 'Lainnya' &&
+      (!form.relationship_remarks || form.relationship_remarks.trim() === '')
+    ) {
+      errors.relationship_remarks = 'Harus diisi jika memilih "Lainnya"';
+    }
+
+
     if (Object.keys(errors).length) {
       setFieldErrors(errors);
       setToast({
@@ -147,7 +161,14 @@ export default function EditResident() {
     }
 
     try {
-      await api.put(`/residents/${id}`, form);
+      const payload = {
+        ...form,
+        relationship:
+          form.relationship === 'Lainnya'
+            ? `Lainnya - ${form.relationship_remarks}`
+            : form.relationship,
+      };
+      await api.put(`/residents/${id}`, payload);
       setToast({
         show: true,
         message: 'Data warga berhasil diperbarui.',
@@ -295,10 +316,11 @@ export default function EditResident() {
                   <label>Status dalam KK</label>
                   <select name="relationship" className={inputClass('relationship')} value={form.relationship} onChange={handleChange} disabled={!isEditable}>
                     <option value="">-- Pilih --</option>
-                    {['Kepala Keluarga', 'Istri', 'Anak'].map(rel => <option key={rel} value={rel}>{rel}</option>)}
+                    {['Kepala Keluarga', 'Istri', 'Anak', 'Lainnya'].map(rel => <option key={rel} value={rel}>{rel}</option>)}
                   </select>
                   {fieldErrors.relationship && <div className="invalid-feedback">{fieldErrors.relationship}</div>}
                 </div>
+
                 <div className="col-md-4 mb-3">
                   <label>Pendidikan Terakhir</label>
                   <select
@@ -367,6 +389,22 @@ export default function EditResident() {
                     disabled={!isEditable}
                   />
                   {fieldErrors.status_remarks && <div className="invalid-feedback">{fieldErrors.status_remarks}</div>}
+                </div>
+              )}
+
+              {form.relationship === 'Lainnya' && (
+                <div className="col mb-3">
+                  <label className="form-label">Keterangan Lainnya</label>
+                  <input
+                    name="relationship_remarks"
+                    className={inputClass('relationship_remarks')}
+                    value={form.relationship_remarks}
+                    onChange={handleChange}
+                    disabled={!isEditable}
+                  />
+                  {fieldErrors.relationship_remarks && (
+                    <div className="invalid-feedback">{fieldErrors.relationship_remarks}</div>
+                  )}
                 </div>
               )}
               {isEditable && (

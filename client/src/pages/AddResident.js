@@ -18,6 +18,7 @@ export default function AddResident() {
     religion: '',
     marital_status: '',
     relationship: '',
+    relationship_remarks: '',
     education: '',
     occupation: '',
     citizenship: 'Indonesia',
@@ -142,6 +143,13 @@ export default function AddResident() {
       (!form.status_remarks || form.status_remarks.trim() === '')
     ) {
       newFieldErrors.status_remarks = 'Harus diisi untuk status lainnya';
+    };
+
+    if (
+      form.relationship === 'Lainnya' &&
+      (!form.relationship_remarks || form.relationship_remarks.trim() === '')
+    ) {
+      newFieldErrors.relationship_remarks = 'Harus diisi untuk status Lainnya';
     }
 
     setFieldErrors(newFieldErrors);
@@ -179,7 +187,15 @@ export default function AddResident() {
 
     // Proceed to create resident if no duplicate
     try {
-      await api.post('/residents', form);
+      const payload = {
+      ...form,
+      relationship:
+        form.relationship === 'Lainnya'
+          ? `Lainnya - ${form.relationship_remarks}`
+          : form.relationship,
+    };
+
+    await api.post('/residents', payload);
       setToast({
         show: true,
         message: 'Data Warga berhasil ditambahkan!',
@@ -437,7 +453,7 @@ export default function AddResident() {
                     onChange={handleChange}
                   >
                     <option value="">-- Pilih --</option>
-                    {['Kepala Keluarga', 'Istri', 'Anak'].map((r) => (
+                    {['Kepala Keluarga', 'Istri', 'Anak', 'Lainnya'].map((r) => (
                       <option key={r} value={r}>
                         {r}
                       </option>
@@ -447,6 +463,7 @@ export default function AddResident() {
                     <div className="invalid-feedback">{fieldErrors.relationship}</div>
                   )}
                 </div>
+                
                 <div className="col-md-4 mb-3">
                   <label className="form-label">Pendidikan Terakhir</label>
                   <select
@@ -540,6 +557,23 @@ export default function AddResident() {
                   )}
                 </div>
               )}
+
+              {form.relationship === 'Lainnya' && (
+                  <div className="col mb-3">
+                    <label className="form-label">Keterangan Status dalam KK - Lainnya</label>
+                    <input
+                      name="relationship_remarks"
+                      className={inputClass('relationship_remarks')}
+                      value={form.relationship_remarks}
+                      onChange={handleChange}
+                      autoComplete="off"
+                    />
+                    {fieldErrors.relationship_remarks && (
+                      <div className="invalid-feedback">{fieldErrors.relationship_remarks}</div>
+                    )}
+                  </div>
+                )}
+
               <button type="submit" className="btn btn-primary">
                 Buat Data Warga
               </button>

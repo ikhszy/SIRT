@@ -216,15 +216,15 @@ export default function EditHousehold() {
                   disabled={!isEditable}
                 >
                   <option value="">-- Pilih Status --</option>
-                  <option value="pemilik">Pemilik</option>
-                  <option value="pemilik belum pindah">Pemilik (Belum pindah alamat)</option>
-                  <option value="numpang alamat">Numpang Alamat</option>
-                  <option value="sewa">Kontrak / Sewa</option>
+                  <option value="Pemilik">Pemilik</option>
+                  <option value="Pemilik belum pindah">Pemilik (Belum pindah alamat)</option>
+                  <option value="Numpang Alamat">Numpang Alamat</option>
+                  <option value="Sewa">Kontrak / Sewa</option>
                 </select>
                 {fieldErrors.status_kepemilikan_rumah && <div className="invalid-feedback">{fieldErrors.status_kepemilikan_rumah}</div>}
               </div>
 
-              {form.status_kepemilikan_rumah && form.status_kepemilikan_rumah !== 'pemilik' && (
+              {form.status_kepemilikan_rumah && form.status_kepemilikan_rumah !== 'Pemilik' && (
                 <div className="mb-3">
                   <label className="form-label">Keterangan (Alamat Asal / Lainnya)</label>
                   <input

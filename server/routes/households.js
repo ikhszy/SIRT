@@ -140,6 +140,12 @@ router.put("/:kk_number", authMiddleware, async (req, res) => {
       return res.status(404).json({ error: "Household not found" });
     }
 
+    // Propagate updated address_id to all residents with the same kk_number
+    await db.run(
+      `UPDATE residents SET address_id = ? WHERE kk_number = ?`,
+      [address_id, req.params.kk_number]
+    );
+
     // Auto-update resident statuses
     if (status_KK === "tidak aktif") {
       await db.run(

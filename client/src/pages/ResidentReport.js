@@ -31,9 +31,9 @@ const defaultFilters = {
 
 const createOptions = (values) => values.map(v => ({ value: v, label: v }));
 
-const bloodTypeOptions = createOptions(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']);
+const bloodTypeOptions = createOptions(['A', 'B', 'AB', 'O']);
 const maritalOptions = createOptions(['Belum Menikah', 'Menikah', 'Janda', 'Duda']);
-const relationshipOptions = createOptions(['Kepala Keluarga', 'Istri', 'Anak']);
+const relationshipOptions = createOptions(['Kepala Keluarga', 'Istri', 'Anak', 'Lainnya']);
 const citizenshipOptions = createOptions(['Indonesia', 'Malaysia', 'Singapore', 'USA', 'Other']);
 const statusOptions = createOptions(['aktif', 'tidak aktif - meninggal', 'tidak aktif - pindah', 'tidak aktif - lainnya']);
 

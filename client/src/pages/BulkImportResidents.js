@@ -101,7 +101,7 @@ export default function BulkImportResidents() {
 
         <div className="mb-3">
           <a
-            href="http://localhost:5000/public/templates/Residents_template.xlsx"
+            href="http://localhost:5000/public/templates/residents-template.xlsx"
             className="btn btn-primary me-2"
             download
           >

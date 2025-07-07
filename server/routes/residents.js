@@ -89,27 +89,44 @@ router.get("/", authMiddleware, async (req, res) => {
       params.push(`%${full_address}%`);
     }
 
-    // ✅ New: Add age range filter (birthdate between X and Y years ago)
     if (min_age && max_age) {
-      // Add 1 day to upper bound to ensure inclusive of exact age
-      const maxAgeAdjusted = `${parseInt(max_age) + 1} years`;
-      filters.push(`r.birthdate BETWEEN date('now', ?) AND date('now', ?)`);
-      params.push(`-${maxAgeAdjusted}`, `-${min_age} years`);
+      filters.push(`
+        (
+          (strftime('%Y', 'now') - strftime('%Y', r.birthdate)) 
+          - (strftime('%m-%d', 'now') < strftime('%m-%d', r.birthdate))
+          BETWEEN ? AND ?
+        )
+      `);
+      params.push(parseInt(min_age), parseInt(max_age));
     } else if (min_age) {
-      filters.push(`r.birthdate <= date('now', ?)`);
-      params.push(`-${min_age} years`);
+      filters.push(`
+        (
+          (strftime('%Y', 'now') - strftime('%Y', r.birthdate)) 
+          - (strftime('%m-%d', 'now') < strftime('%m-%d', r.birthdate))
+          >= ?
+        )
+      `);
+      params.push(parseInt(min_age));
     } else if (max_age) {
-      filters.push(`r.birthdate >= date('now', ?)`);
-      params.push(`-${max_age} years`);
+      filters.push(`
+        (
+          (strftime('%Y', 'now') - strftime('%Y', r.birthdate)) 
+          - (strftime('%m-%d', 'now') < strftime('%m-%d', r.birthdate))
+          <= ?
+        )
+      `);
+      params.push(parseInt(max_age));
     }
 
     const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
 
     const sql = `
-      SELECT r.*, a.full_address
+      SELECT r.*, 
+        COALESCE(a.full_address, ha.full_address) AS full_address
       FROM residents r
       LEFT JOIN address a ON r.address_id = a.id
       LEFT JOIN households h ON r.kk_number = h.kk_number
+      LEFT JOIN address ha ON h.address_id = ha.id
       ${whereClause}
     `;
 

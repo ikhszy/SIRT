@@ -106,7 +106,7 @@ export default function BulkImportAddress() {
         </div>
 
         <a
-          href="http://localhost:5000/public/templates/Household_template.xlsx"
+          href="http://localhost:5000/public/templates/addresses_template.xlsx"
           className="btn btn-primary me-2"
           download
         >

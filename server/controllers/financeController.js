@@ -876,7 +876,8 @@ exports.getIuranSummary = (req, res) => {
 };
 
 exports.getMonthlyIuranStatus = (req, res) => {
-  const { month, year, addressId } = req.query;
+  const { month, year, addressId, status } = req.query;
+
   if (!month || !year) return res.status(400).json({ error: 'Month and year are required' });
 
   const formattedMonth = `${year}-${month.padStart(2, '0')}`;
@@ -905,10 +906,17 @@ exports.getMonthlyIuranStatus = (req, res) => {
   db.all(sql, params, (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
 
-    const result = rows.map(row => ({
+    let result = rows.map(row => ({
       address: row.address,
       status: row.paid ? 'paid' : 'unpaid'
     }));
+
+    // Apply status filter if provided
+    if (status === 'paid') {
+      result = result.filter(row => row.status === 'paid');
+    } else if (status === 'unpaid') {
+      result = result.filter(row => row.status === 'unpaid');
+    }
 
     res.json(result);
   });
