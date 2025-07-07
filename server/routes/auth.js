@@ -50,7 +50,7 @@ router.post('/login', (req, res) => {
       const token = jwt.sign(
         { userId: user.userId, username: user.username, role: user.role },
         JWT_SECRET,
-        { expiresIn: '30m' }
+        { expiresIn: '24h' }
       );
 
       // 🧹 Trigger donation cleanup (async, non-blocking)

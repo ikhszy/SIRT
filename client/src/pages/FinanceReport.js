@@ -54,7 +54,7 @@ const [filters, setFilters] = useState(() => {
         (a, b) => new Date(b.transactionDate) - new Date(a.transactionDate)
       );
       setData(sorted);
-      setCurrentPage(1);
+      setCurrentPage((prev) => (prev > totalPages ? 1 : prev));
     } catch (err) {
       console.error('Failed to fetch finance data:', err);
       alert('Gagal memuat data keuangan. Silakan coba lagi.');
@@ -262,7 +262,7 @@ const [filters, setFilters] = useState(() => {
 
           <div className="d-flex justify-content-between align-items-center mt-3">
             <div>
-              Menampilkan {paginatedData.length} dari {filteredData.length} data
+              Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} – {Math.min(currentPage * ITEMS_PER_PAGE, filteredData.length)} dari {filteredData.length} data
             </div>
             <div className="d-flex gap-2">
               <Button

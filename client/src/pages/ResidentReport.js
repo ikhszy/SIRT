@@ -198,9 +198,6 @@ export default function ResidentReport() {
             <Button variant="outline-danger" className="me-2" onClick={handleExportPDF}>
               <i className="fas fa-file-pdf me-1" /> Export to PDF
             </Button>
-            <Button variant="outline-primary" onClick={() => window.print()}>
-              <i className="fas fa-print me-1" /> Print
-            </Button>
           </div>
         </div>
 

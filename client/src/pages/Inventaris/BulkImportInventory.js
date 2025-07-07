@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import AdminLayout from "../../layouts/AdminLayout";
-import axios from "axios";
-import { useNavigate } from 'react-router-dom';
+import api from "../../api";
+import ModalDialog from "../../Components/ModalDialog";
+import { useNavigate } from "react-router-dom";
 
 export default function BulkImportInventory() {
   const [file, setFile] = useState(null);
@@ -11,6 +12,8 @@ export default function BulkImportInventory() {
   const [loadingImport, setLoadingImport] = useState(false);
   const [importResult, setImportResult] = useState(null);
 
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [inserted, setInserted] = useState([]);
   const navigate = useNavigate();
 
   const handleFileChange = (e) => {
@@ -32,7 +35,7 @@ export default function BulkImportInventory() {
     formData.append("file", file);
 
     try {
-      const res = await axios.post("/api/inventory-import/preview", formData);
+      const res = await api.post("/inventory/inventory-import/preview", formData);
       if (res.data.success) {
         setPreviewData(res.data.data || []);
         setErrors(res.data.errors || []);
@@ -47,23 +50,29 @@ export default function BulkImportInventory() {
   };
 
   const handleImport = async () => {
-    if (previewData.length === 0) return alert("Nothing to import");
-
-    setLoadingImport(true);
-    setImportResult(null);
+    if (!file) return alert("Please select a file first");
 
     const formData = new FormData();
     formData.append("file", file);
 
+    setLoadingImport(true);
     try {
-      const res = await axios.post("/api/inventory-import/bulk", formData);
-      if (res.data.success) {
-        setImportResult(res.data);
+      const res = await api.post("/inventory/inventory-import/bulk", formData);
+
+      setInserted(res.data.inserted || []);
+      setErrors(res.data.errors || []);
+
+      if (res.data.success && res.data.inserted.length > 0) {
+        setShowSuccessModal(true);
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          navigate("/inventory");
+        }, 3000);
       } else {
-        alert("Import failed: " + (res.data.message || "Unknown error"));
+        alert("Tidak ada baris yang berhasil diimpor.");
       }
     } catch (err) {
-      alert("Import request failed: " + err.message);
+      alert("Gagal mengimpor inventaris.");
     } finally {
       setLoadingImport(false);
     }
@@ -181,6 +190,17 @@ export default function BulkImportInventory() {
           </div>
         )}
       </div>
+
+      <ModalDialog
+        show={showSuccessModal}
+        title="Import Berhasil"
+        message={`Data inventaris berhasil diimpor sebanyak ${inserted.length} baris.`}
+        isSuccess={true}
+        onClose={() => {
+          setShowSuccessModal(false);
+          navigate("/inventory");
+        }}
+      />
     </AdminLayout>
   );
 }
