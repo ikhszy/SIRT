@@ -60,6 +60,12 @@ Find me on [LinkedIn](https://www.linkedin.com/in/ikhszy/) or open an issue in t
 
 ---
 
+Use this credentials for first login:
+- username 'admin_user'
+- password 'Admin123!'
+
+---
+
 ## 📸 Snapshots of the Apps
 
 **Login Page**
