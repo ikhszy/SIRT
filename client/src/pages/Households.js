@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import ModalDialog from '../Components/ModalDialog';
 import Pagination from '../Components/Pagination';
 
@@ -87,9 +87,9 @@ export default function Households() {
             <i className="fas fa-home me-2"></i> Kartu Keluarga
           </h1>
           <div>
-            <a href="/households/add" className="btn btn-success mb-3">
+            <Link to="/households/add" className="btn btn-success mb-3">
               <i className="fas fa-plus"></i> Tambah Kartu Keluarga
-            </a>
+            </Link>
             <button
               className="btn btn-primary mb-3 ms-2"
               onClick={() => navigate("/households/import")}
@@ -125,8 +125,8 @@ export default function Households() {
               onChange={(e) => setFilters(f => ({ ...f, status_KK: e.target.value }))}
             >
               <option value="">-- Status KK --</option>
-              <option value="aktif">Aktif</option>
-              <option value="tidak aktif">Tidak Aktif</option>
+              <option value="Aktif">Aktif</option>
+              <option value="Tidak Aktif">Tidak Aktif</option>
             </select>
           </div>
           <div className="col-md-3">
@@ -136,10 +136,10 @@ export default function Households() {
               onChange={(e) => setFilters(f => ({ ...f, status_kepemilikan_rumah: e.target.value }))}
             >
               <option value="">-- Kepemilikan Rumah --</option>
-              <option value="pemilik">Pemilik</option>
-              <option value="pemilik belum pindah">Pemilik (Belum pindah alamat)</option>
-              <option value="numpang alamat">Numpang Alamat</option>
-              <option value="sewa">Kontrak / Sewa</option>
+              <option value="Pemilik">Pemilik</option>
+              <option value="Pemilik belum pindah">Pemilik (Belum pindah alamat)</option>
+              <option value="Numpang Alamat">Numpang Alamat</option>
+              <option value="Sewa">Kontrak / Sewa</option>
             </select>
           </div>
         </div>
@@ -172,7 +172,7 @@ export default function Households() {
                       >
                         <td>{h.kk_number}</td>
                         <td>{h.full_address || '-'}</td>
-                        <td>{h.status_KK === 'tidak aktif' ? 'Tidak Aktif' : 'Aktif'}</td>
+                        <td>{h.status_KK?.toLowerCase() === 'tidak aktif' ? 'Tidak Aktif' : 'Aktif'}</td>
                         <td>{ownershipLabels[h.status_kepemilikan_rumah] || '-'}</td>
                         <td onClick={e => e.stopPropagation()}>
                           <button

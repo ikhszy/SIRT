@@ -6,12 +6,22 @@ const db = require('../db/db.js');
 // GET all households with address info
 router.get("/", authMiddleware, async (req, res) => {
   try {
-    const sql = `
+    const { address_id } = req.query;
+
+    let sql = `
       SELECT h.*, a.full_address
       FROM households h
       LEFT JOIN address a ON h.address_id = a.id
     `;
-    const rows = await db.all(sql);
+
+    let params = [];
+
+    if (address_id) {
+      sql += ` WHERE h.address_id = ?`;
+      params.push(address_id);
+    }
+
+    const rows = await db.all(sql, params);
     res.json(rows);
   } catch (err) {
     console.error("GET all households failed:", err);

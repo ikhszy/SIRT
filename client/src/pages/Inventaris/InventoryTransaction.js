@@ -83,14 +83,8 @@ export default function InventoryTransaction() {
 
   const handleFilter = (e) => {
     e.preventDefault();
+    setPage(1);
     setFilters({ ...formFilters });
-
-    // Only fetch all if on borrow tab
-    if (currentTab === "borrow") {
-      fetchAllTransactions();
-    }
-
-    fetchDisplayedTransactions(1);
   };
 
   const handlePageChange = (newPage) => {

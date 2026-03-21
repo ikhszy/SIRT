@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import ModalDialog from '../Components/ModalDialog';
 import Pagination from '../Components/Pagination';
 
@@ -82,12 +82,12 @@ export default function Addresses() {
             <i className="fas fa-map-marker-alt me-2"></i> Data Alamat
           </h1>
           <div>
-            <a href="/addresses/add" className="btn btn-success mb-3">
+            <Link to="/addresses/add" className="btn btn-success mb-3">
               <i className="fas fa-plus me-1"></i> Tambah Alamat
-            </a>
-            <a href="/address/import" className="btn btn-primary mb-3 ms-2">
+            </Link>
+            <Link to="/address/import" className="btn btn-primary mb-3 ms-2">
               <i className="fas fa-file-import"></i> Import Alamat
-            </a>
+            </Link>
           </div>
         </div>
 

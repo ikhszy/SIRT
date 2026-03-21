@@ -10,6 +10,9 @@ export default function KeuanganTab() {
   const [transactions, setTransactions] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [confirmModal, setConfirmModal] = useState({
@@ -63,9 +66,23 @@ export default function KeuanganTab() {
   };
 
   // Filter and paginate
-  const filtered = transactions.filter(t =>
-    (t.remarks || '').toLowerCase().includes(debouncedSearch.toLowerCase())
-  );
+  const filtered = transactions.filter(t => {
+    const matchRemarks =
+      (t.remarks || '').toLowerCase().includes(debouncedSearch.toLowerCase());
+
+    const matchStatus =
+      statusFilter === '' || t.type === statusFilter;
+
+    const transactionDate = new Date(t.transactionDate);
+
+    const matchStartDate =
+      !startDate || transactionDate >= new Date(startDate);
+
+    const matchEndDate =
+      !endDate || transactionDate <= new Date(endDate);
+
+    return matchRemarks && matchStatus && matchStartDate && matchEndDate;
+  });
 
   const totalItems = filtered.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
@@ -83,6 +100,10 @@ export default function KeuanganTab() {
   return (
     <div>
       <div className="mb-3">
+        <div className="row g-3 mb-3">
+      {/* Keterangan */}
+      <div className="col-md-3">
+        <label className="form-label">Keterangan</label>
         <input
           type="text"
           className="form-control"
@@ -92,8 +113,54 @@ export default function KeuanganTab() {
             setSearchTerm(e.target.value);
             setCurrentPage(1);
           }}
-          aria-label="Search transactions by remarks"
         />
+      </div>
+
+      {/* Status */}
+      <div className="col-md-2">
+        <label className="form-label">Status</label>
+        <select
+          className="form-control"
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setCurrentPage(1);
+          }}
+        >
+          <option value="">Semua</option>
+          <option value="Income">Income</option>
+          <option value="Expense">Expense</option>
+        </select>
+      </div>
+
+      {/* Start Date */}
+      <div className="col-md-2">
+        <label className="form-label">Start Date</label>
+        <input
+          type="date"
+          className="form-control"
+          value={startDate}
+          onChange={(e) => {
+            setStartDate(e.target.value);
+            setCurrentPage(1);
+          }}
+        />
+      </div>
+
+      {/* End Date */}
+      <div className="col-md-2">
+        <label className="form-label">End Date</label>
+        <input
+          type="date"
+          className="form-control"
+          value={endDate}
+          onChange={(e) => {
+            setEndDate(e.target.value);
+            setCurrentPage(1);
+          }}
+        />
+      </div>
+    </div>
       </div>
       <div className="card shadow">
         <div className="card-body table-responsive p-0">

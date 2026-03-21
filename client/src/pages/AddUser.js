@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import AdminLayout from '../layouts/AdminLayout';
 import ModalDialog from '../Components/ModalDialog';
@@ -62,9 +62,9 @@ export default function AddUser() {
           <h1 className="h3 text-gray-800">
             <i className="fas fa-user-shield me-2"></i> Tambah Pengguna
           </h1>
-          <a href="/users" className="btn btn-warning">
+          <Link to="/users" className="btn btn-warning">
             <i className="fas fa-arrow-left me-1"></i> Kembali
-          </a>
+          </Link>
         </div>
 
         <div className="card shadow mb-4">

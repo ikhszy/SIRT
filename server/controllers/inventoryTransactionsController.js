@@ -61,9 +61,13 @@ const getAllTransactions = async (req, res) => {
 
     // 2. Get paginated data
     const dataQuery = `
-      SELECT it.*, i.name AS item_name, it.borrower_name AS borrower_display_name
+      SELECT 
+        it.*, 
+        i.name AS item_name, 
+        COALESCE(r.full_name, it.borrower_name) AS borrower_display_name
       FROM inventory_transactions it
       LEFT JOIN inventory_items i ON i.id = it.item_id
+      LEFT JOIN residents r ON r.id = it.borrower_id AND it.borrower_type = 'warga'
       ${whereClause}
       ORDER BY it.created_at DESC
       LIMIT ? OFFSET ?

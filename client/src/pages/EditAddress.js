@@ -17,6 +17,10 @@ export default function EditAddress() {
   const [isDuplicate, setIsDuplicate] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [toast, setToast] = useState({ show: false, message: '', isError: false });
+  const [households, setHouseholds] = useState([]);
+  const [selectedHousehold, setSelectedHousehold] = useState(null);
+  const [residents, setResidents] = useState([]);
+  const [loadingResidents, setLoadingResidents] = useState(false);
 
   useEffect(() => {
     if (toast.show) {
@@ -63,6 +67,21 @@ export default function EditAddress() {
         console.error('Failed to load address', err);
         setToast({ show: true, message: 'Gagal memuat data alamat.', isError: true });
       });
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchHouseholds = async () => {
+      try {
+        const res = await api.get(`/households?address_id=${id}`);
+        setHouseholds(res.data);
+      } catch (err) {
+        console.error('Failed to load households', err);
+      }
+    };
+
+    fetchHouseholds();
   }, [id]);
 
   const handleChange = async (e) => {
@@ -128,6 +147,20 @@ export default function EditAddress() {
       setToast({ show: true, message: '❌ Gagal memperbarui alamat.', isError: true });
     }
   };
+  const handleHouseholdClick = async (household) => {
+    setSelectedHousehold(household);
+    setLoadingResidents(true);
+
+    try {
+      const res = await api.get(`/residents?household_id=${household.kk_number}`);
+      setResidents(res.data);
+    } catch (err) {
+      console.error('Failed to load residents', err);
+      setResidents([]);
+    } finally {
+      setLoadingResidents(false);
+    }
+  };
 
   return (
     <AdminLayout>
@@ -180,6 +213,62 @@ export default function EditAddress() {
             </form>
           </div>
         </div>
+        <div className="card shadow mb-4">
+          <div className="card-header">
+            <h5 className="mb-0">Daftar Kartu Keluarga</h5>
+          </div>
+          <div className="card-body">
+            {households.length === 0 ? (
+              <p className="text-muted">Tidak ada data KK untuk alamat ini.</p>
+            ) : (
+              <div className="list-group">
+                {households.map((h) => (
+                  <button
+                    key={h.id}
+                    className={`list-group-item list-group-item-action ${
+                      selectedHousehold?.id === h.id ? 'active' : ''
+                    }`}
+                    onClick={() => handleHouseholdClick(h)}
+                  >
+                    <strong>{h.kk_number}</strong>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        {selectedHousehold && (
+          <div className="card shadow mb-4">
+            <div className="card-header">
+              <h5 className="mb-0">
+                Anggota Keluarga - KK {selectedHousehold.kk_number} ({selectedHousehold.status_kepemilikan_rumah})
+              </h5>
+            </div>
+            <div className="card-body">
+              {residents.length === 0 ? (
+                <p className="text-muted">Tidak ada data anggota keluarga.</p>
+              ) : (
+                <ul className="list-group">
+                  {residents.map((r) => (
+                    <li 
+                    key={r.id}
+                    className="list-group-item"
+                    onClick={() => navigate(`/residents/view/${r.id}`)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                      <strong>{r.full_name} </strong>
+                      <div className="text-muted small">
+                      NIK: {r.nik}
+                      <br></br>
+                      Status dalam KK: {r.relationship} 
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {toast.show && (

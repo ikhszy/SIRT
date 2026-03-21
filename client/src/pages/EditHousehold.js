@@ -11,6 +11,8 @@ export default function EditHousehold() {
 
   const isViewMode = location.pathname.includes('/view/');
   const [isEditable, setIsEditable] = useState(!isViewMode);
+  const [residents, setResidents] = useState([]);
+  const [loadingResidents, setLoadingResidents] = useState(false);
 
   const [form, setForm] = useState({
     address_id: '',
@@ -61,6 +63,25 @@ export default function EditHousehold() {
     };
 
     fetchData();
+  }, [kk_number]);
+
+  useEffect(() => {
+    if (!kk_number) return;
+
+    const fetchResidents = async () => {
+      setLoadingResidents(true);
+      try {
+        const res = await api.get(`/residents?household_id=${kk_number}`);
+        setResidents(res.data);
+      } catch (err) {
+        console.error('Failed to load residents', err);
+        setResidents([]);
+      } finally {
+        setLoadingResidents(false);
+      }
+    };
+
+    fetchResidents();
   }, [kk_number]);
 
   useEffect(() => {
@@ -186,8 +207,8 @@ export default function EditHousehold() {
                   disabled={!isEditable}
                 >
                   <option value="">-- Pilih Status KK --</option>
-                  <option value="aktif">Aktif</option>
-                  <option value="tidak aktif">Tidak Aktif</option>
+                  <option value="Aktif">Aktif</option>
+                  <option value="Tidak Aktif">Tidak Aktif</option>
                 </select>
                 {fieldErrors.status_KK && <div className="invalid-feedback">{fieldErrors.status_KK}</div>}
               </div>
@@ -266,6 +287,35 @@ export default function EditHousehold() {
                 </button>
               )}
             </form>
+          </div>
+        </div>
+
+        <div className="card shadow mb-4">
+          <div className="card-header">
+            <h5 className="mb-0">Daftar Anggota Keluarga</h5>
+          </div>
+          <div className="card-body">
+            {loadingResidents ? (
+              <p>Loading...</p>
+            ) : residents.length === 0 ? (
+              <p className="text-muted">Tidak ada anggota keluarga.</p>
+            ) : (
+              <ul className="list-group">
+                {residents.map((r) => (
+                  <li
+                    key={r.id}
+                    className="list-group-item"
+                    onClick={() => navigate(`/residents/view/${r.id}`)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <strong>{r.full_name}</strong>
+                    <div className="text-muted small">
+                      NIK: {r.nik}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       </div>

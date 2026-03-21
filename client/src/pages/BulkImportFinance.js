@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import AdminLayout from "../layouts/AdminLayout";
 import api from "../api";
 import ModalDialog from "../Components/ModalDialog";
+import { Link } from "react-router-dom";
 
 export default function FinanceImport() {
   const [file, setFile] = useState(null);
@@ -144,13 +145,13 @@ export default function FinanceImport() {
             className="form-control"
           />
         </div>
-        <a
-          href="http://localhost:5000/public/templates/Finance_template.xlsx"
+        <Link
+          to="http://localhost:5000/public/templates/Finance_template.xlsx"
           className="btn btn-primary me-2"
           download
         >
           <i className="fas fa-download me-2"></i>Download Template
-        </a>
+        </Link>
         <button className="btn btn-primary me-2" onClick={handlePreview} disabled={loading || !file}>
           Preview
         </button>

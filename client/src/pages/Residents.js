@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import ModalDialog from '../Components/ModalDialog';
 import Pagination from '../Components/Pagination';
 
@@ -94,12 +94,12 @@ export default function Residents() {
             <i className="fas fa-users me-2"></i> Data Warga
           </h1>
             <div>
-              <a href="/residents/add" className="btn btn-success mb-3">
+              <Link to="/residents/add" className="btn btn-success mb-3">
                 <i className="fas fa-plus"></i> Tambah Data Warga
-              </a>
-              <a href="/residents/import" className="btn btn-primary mb-3 ms-2">
+              </Link>
+              <Link to="/residents/import" className="btn btn-primary mb-3 ms-2">
                 <i className="fas fa-file-import"></i> Import Data Warga
-              </a>
+              </Link>
             </div>
         </div>
 
@@ -138,7 +138,7 @@ export default function Residents() {
               }}
             >
               <option value="">Jenis Kelamin</option>
-              <option value="Laki-laki">Laki-laki</option>
+              <option value="Laki - laki">Laki - laki</option>
               <option value="Perempuan">Perempuan</option>
             </select>
           </div>

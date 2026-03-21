@@ -160,8 +160,8 @@ export default function AddHousehold() {
                   onChange={handleChange}
                 >
                   <option value="">-- Pilih Status KK --</option>
-                  <option value="aktif">Aktif</option>
-                  <option value="tidak aktif">Tidak Aktif</option>
+                  <option value="Aktif">Aktif</option>
+                  <option value="Tidak Aktif">Tidak Aktif</option>
                 </select>
                 {fieldErrors.status_KK && (
                   <div className="invalid-feedback">{fieldErrors.status_KK}</div>
@@ -201,7 +201,7 @@ export default function AddHousehold() {
                 )}
               </div>
 
-              {form.status_kepemilikan_rumah && form.status_kepemilikan_rumah !== 'pemilik' && (
+              {form.status_kepemilikan_rumah && form.status_kepemilikan_rumah !== 'Pemilik' && (
                 <div className="mb-3">
                   <label className="form-label">Keterangan (Alamat Domisili Asal / Lainnya)</label>
                   <input

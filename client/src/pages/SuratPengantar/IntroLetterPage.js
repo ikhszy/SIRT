@@ -66,20 +66,23 @@ export default function IntroLetterPage() {
         <Form onSubmit={handleFilter} className="mb-3">
           <Row className="g-2">
             <Col md={3}>
+            <Form.Label>Cari Nama/NIK</Form.Label>
               <Form.Control
-                placeholder="Cari nama atau NIK"
+                placeholder="Nama atau NIK"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </Col>
             <Col md={2}>
+            <Form.Label>Cari Status</Form.Label>
               <Form.Select value={status} onChange={(e) => setStatus(e.target.value)}>
                 <option value="">Semua Status</option>
-                <option value="Belum Diserahkan">Belum Diserahkan</option>
+                <option value="Dibuat">Dibuat</option>
                 <option value="Diserahkan">Diserahkan</option>
               </Form.Select>
             </Col>
             <Col md={2}>
+            <Form.Label>Start Date</Form.Label>
               <Form.Control
                 type="date"
                 value={startDate}
@@ -87,13 +90,14 @@ export default function IntroLetterPage() {
               />
             </Col>
             <Col md={2}>
+            <Form.Label>End Date</Form.Label>
               <Form.Control
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
               />
             </Col>
-            <Col md={2}>
+            <Col md={2} className="d-flex align-items-end">
               <Button type="submit" className="w-100 btn-primary">Filter</Button>
             </Col>
           </Row>

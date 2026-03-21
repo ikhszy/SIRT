@@ -15,11 +15,17 @@ router.get("/", authMiddleware, async (req, res) => {
     const {
       full_name = '', nik = '', kk_number = '', gender = '', birthplace = '',
       education = '', occupation = '', full_address = '', status = '',
-      min_age = '', max_age = ''
+      min_age = '', max_age = '', household_id
     } = req.query;
 
     const filters = [];
     const params = [];
+
+    // 🔥 NEW: filter by household_id → map to kk_number
+    if (household_id) {
+      filters.push(`r.kk_number = ?`);
+      params.push(household_id);
+    }
 
     if (full_name) {
       filters.push(`r.full_name LIKE ?`);
@@ -55,6 +61,7 @@ router.get("/", authMiddleware, async (req, res) => {
       filters.push(`r.occupation LIKE ?`);
       params.push(`%${occupation}%`);
     }
+
     if (req.query.marital_status) {
       const values = req.query.marital_status.split(',');
       filters.push(`r.marital_status IN (${values.map(() => '?').join(',')})`);

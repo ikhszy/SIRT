@@ -219,7 +219,7 @@ const [filters, setFilters] = useState(() => {
                     })
                   }
                 >
-                  Reset
+                  Hapus Filter
                 </Button>
               </Col>
             </Row>

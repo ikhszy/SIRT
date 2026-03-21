@@ -235,7 +235,7 @@ export default function ResidentReport() {
             <div className="mt-3 d-flex justify-content-end">
               <Button size="sm" variant="secondary" onClick={handleClearFilters}>Hapus filters</Button>
               <Button size="sm" variant="primary" className="ms-2" onClick={fetchResidents}>
-                <i className="fas fa-search me-1" /> Cari
+                <i className="fas fa-search me-1" /> Terapkan Filter
               </Button>
             </div>
           </Card.Body>

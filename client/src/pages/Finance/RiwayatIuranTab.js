@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api'; // adjust path if needed
 import Pagination from '../../Components/Pagination';
+import Select from 'react-select';
 
 const MONTHS = [
   { value: 1, label: 'Januari' },
@@ -88,6 +89,11 @@ export default function RiwayatIuranTab({ prefilledFilters }) {
     }
   };
 
+  const addressOptions = addresses.map(addr => ({
+    value: addr.id,
+    label: addr.full_address
+  }));
+
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
     handleSearch(); // re-fetch data (you could paginate server-side here too)
@@ -102,19 +108,16 @@ export default function RiwayatIuranTab({ prefilledFilters }) {
           <div className="row row-cols-1 row-cols-md-4 g-3">
             <div className="col">
               <label htmlFor="address" className="form-label">Alamat</label>
-              <select
-                id="address"
-                className="form-select"
-                value={selectedAddress}
-                onChange={(e) => setSelectedAddress(e.target.value)}
-              >
-                <option value="">-- Pilih Alamat --</option>
-                {addresses.map((addr) => (
-                  <option key={addr.id} value={addr.id}>
-                    {addr.full_address}
-                  </option>
-                ))}
-              </select>
+              <Select
+                inputId="address"
+                options={addressOptions}
+                isClearable
+                placeholder="Cari alamat..."
+                value={addressOptions.find(opt => opt.value === selectedAddress) || null}
+                onChange={(selected) => {
+                  setSelectedAddress(selected?.value || '');
+                }}
+              />
             </div>
 
             <div className="col">

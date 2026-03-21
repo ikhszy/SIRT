@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import KeuanganTab from './KeuanganTab';
 import RiwayatIuranTab from './RiwayatIuranTab';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 
 export default function FinanceTabs() {
   const location = useLocation();
@@ -27,12 +27,12 @@ export default function FinanceTabs() {
             <i className="fas fa-wallet me-2"></i> Keuangan RT
           </h1>
           <div>
-            <a href="/finance/add" className="btn btn-success me-2">
+            <Link to="/finance/add" className="btn btn-success me-2">
               <i className="fas fa-plus me-1"></i> Tambah Transaksi
-            </a>
-            <a href="/finance/import" className="btn btn-primary">
+            </Link>
+            <Link to="/finance/import" className="btn btn-primary">
               <i className="fas fa-file-import me-1"></i> Import Excel
-            </a>
+            </Link>
           </div>
         </div>
 

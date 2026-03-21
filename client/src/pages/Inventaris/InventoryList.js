@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import api from '../../api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import ModalDialog from '../../Components/ModalDialog';
 import Pagination from '../../Components/Pagination';
 
@@ -85,12 +85,13 @@ export default function InventoryList() {
             <i className="fas fa-boxes me-2"></i> Data Inventaris
           </h1>
           <div>
-            <a href="/inventory/add" className="btn btn-success mb-3">
+            <Link to="/inventory/add" className="btn btn-success mb-3">
               <i className="fas fa-plus me-1"></i> Tambah Inventaris
-            </a>
-            <a href="/import-inventory" className="btn btn-primary mb-3 ms-2">
+            </Link>
+
+            <Link to="/import-inventory" className="btn btn-primary mb-3 ms-2">
               <i className="fas fa-file-import me-1"></i> Import Inventaris
-            </a>
+            </Link>
           </div>
         </div>
 

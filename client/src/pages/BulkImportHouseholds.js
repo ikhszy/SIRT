@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import AdminLayout from "../layouts/AdminLayout";
 import api from '../api';
 import ModalDialog from "../Components/ModalDialog";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 export default function BulkImportHouseholds() {
   const navigate = useNavigate();
@@ -116,13 +116,13 @@ export default function BulkImportHouseholds() {
         </div>
 
         <div className="mb-3">
-          <a
-            href="http://localhost:5000/public/templates/Household_template.xlsx"
+          <Link
+            to="http://localhost:5000/public/templates/Household_template.xlsx"
             className="btn btn-primary me-2"
             download
           >
             <i className="fas fa-download me-2"></i>Download Excel Template
-          </a>
+          </Link>
           <button
             className="btn btn-primary me-2"
             onClick={handlePreview}

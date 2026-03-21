@@ -1,7 +1,47 @@
 {
+  "name": "sirt",
+  "version": "1.0.1",
+  "description": "SIRT Offline Desktop App",
+  "main": "electron/main.js",
+  "author": "Community Manager Apps",
   "dependencies": {
-    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
     "dayjs": "^1.11.13",
-    "jsonwebtoken": "^9.0.2"
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.1",
+    "sqlite3": "^5.1.7",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "electron": "^40.1.0",
+    "electron-builder": "^26.7.0"
+  },
+  "scripts": {
+    "start": "node server/server.js",
+    "electron:dev": "electron .",
+    "build:client": "cd client && npm run build",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.ikhsan.sirt",
+    "productName": "SIRT",
+    "files": [
+      "electron/**/*",
+      "server/**/*",
+      "client/build/**/*",
+      "uploads/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "server/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    }
   }
 }
