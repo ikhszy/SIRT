@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 export default function EditAddress() {
   const { id } = useParams();
@@ -54,6 +56,152 @@ export default function EditAddress() {
     };
     fetchSettings();
   }, []);
+
+  const calculateAge = (birthdate) => {
+    if (!birthdate) return '';
+    const birth = new Date(birthdate);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
+  };
+
+  const handleExportAddressPDF = async () => {
+    const doc = new jsPDF('p', 'pt', 'A4');
+
+    const today = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    const fullAddress = `${form.full_address} RT ${commonSettings?.rt} RW ${commonSettings?.rw} Kelurahan ${commonSettings?.kelurahan}, Kecamatan ${commonSettings?.kecamatan}, ${commonSettings?.kota} ${commonSettings?.kodepos}`;
+
+    // 🔹 Title
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text(`Laporan Warga per Alamat`, 40, 40);
+
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Per ${today}`, 40, 55);
+
+    // 🔹 Address
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text(`Alamat:`, 40, 75);
+
+    doc.setFont(undefined, 'normal');
+    doc.text(fullAddress, 40, 90, { maxWidth: 500 });
+
+    let startY = 120;
+
+    const statusOrder = [
+      "Pemilik",
+      "Pemilik belum pindah",
+      "Numpang Alamat",
+      "Sewa"
+    ];
+
+    const sortedHouseholds = [...households].sort((a, b) => {
+      return (
+        statusOrder.indexOf(a.status_kepemilikan_rumah) -
+        statusOrder.indexOf(b.status_kepemilikan_rumah)
+      );
+    });
+
+    // 🔥 Loop each KK
+    for (const household of sortedHouseholds) {
+      // Fetch residents per KK (important!)
+      let members = [];
+      try {
+        const res = await api.get(`/residents?household_id=${household.kk_number}`);
+        members = res.data;
+      } catch (err) {
+        console.error('Failed fetch residents for KK', household.kk_number);
+      }
+
+      if (members.length === 0) continue;
+
+      const relationshipOrder = [
+        "Kepala Keluarga",
+        "Istri",
+        "Anak",
+        "Lainnya"
+      ];
+
+      members.sort((a, b) =>
+        relationshipOrder.indexOf(a.relationship) -
+        relationshipOrder.indexOf(b.relationship)
+      );
+
+      // 🔹 Add top spacing BEFORE each KK (except first)
+      if (startY > 120) {
+        startY += 10;
+      }
+
+      // 🔹 KK Header
+      doc.setFont(undefined, 'bold');
+      doc.setFontSize(10);
+      doc.text(`No. KK: ${household.kk_number}`, 40, startY);
+
+      doc.setFont(undefined, 'normal');
+      doc.text(`Status: ${household.status_kepemilikan_rumah}`, 40, startY + 12);
+
+      startY += 20; // ✅ more breathing room before table
+
+      // 🔹 Table
+      doc.autoTable({
+        startY,
+        head: [["Nama", "Hubungan", "L/P", "Usia"]],
+        body: members.map(m => [
+          m.full_name,
+          m.relationship || '-',
+          m.gender === "Laki - Laki" ? "L" : "P",
+          calculateAge(m.birthdate)
+        ]),
+        styles: {
+          fontSize: 8,
+          cellPadding: 4 // 🔥 increase padding (IMPORTANT)
+        },
+        headStyles: {
+          fillColor: [52, 73, 94],
+          textColor: 255
+        },
+        margin: { left: 40 },
+        alternateRowStyles: { fillColor: [245, 245, 245] }
+      });
+
+      // 🔹 After table
+      startY = doc.lastAutoTable.finalY + 8;
+
+      // 🔹 Total
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'italic');
+      doc.text(`Jumlah anggota: ${members.length} orang`, 40, startY);
+
+      // 🔹 Add divider line HERE
+      doc.setDrawColor(200);
+      doc.line(40, startY + 5, 550, startY + 5);
+
+      // 🔹 BIG spacing before next KK
+      startY += 15;
+
+      // 🔥 Page break handling
+      if (startY > 750) {
+        doc.addPage();
+        startY = 40;
+      }
+    }
+
+    const safeAddress = form.full_address
+    .replace(/[\\/:*?"<>|]/g, '') // clean invalid chars
+    .trim()
+    .slice(0, 10);
+
+  doc.save(`Detail-${safeAddress}.pdf`);
+  };
 
   useEffect(() => {
     api.get(`/address/${id}`)
@@ -175,6 +323,12 @@ export default function EditAddress() {
               <i className="fas fa-edit me-1"></i> Ubah
             </button>
           )}
+          <button
+            className="btn btn-outline-success ms-2"
+            onClick={handleExportAddressPDF}
+          >
+            <i className="fas fa-file-pdf me-1"></i> Export Alamat
+          </button>
         </div>
 
         <div className="card shadow mb-4">

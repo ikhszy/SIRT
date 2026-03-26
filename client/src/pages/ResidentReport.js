@@ -25,7 +25,7 @@ const defaultFilters = {
   full_name: '', nik: '', kk_number: '', gender: '', birthplace: '',
   education: '', occupation: '', full_address: '',
   min_age: '', max_age: '', min_birthdate: '', max_birthdate: '',
-  blood_type: [], marital_status: [], relationship: [], citizenship: [],
+  blood_type: [], marital_status: [], relationship: [], citizenship: '',
   status: ''
 };
 
@@ -34,13 +34,13 @@ const createOptions = (values) => values.map(v => ({ value: v, label: v }));
 const bloodTypeOptions = createOptions(['A', 'B', 'AB', 'O']);
 const maritalOptions = createOptions(['Belum Menikah', 'Menikah', 'Janda', 'Duda']);
 const relationshipOptions = createOptions(['Kepala Keluarga', 'Istri', 'Anak', 'Lainnya']);
-const citizenshipOptions = createOptions(['Indonesia', 'Malaysia', 'Singapore', 'USA', 'Other']);
 const statusOptions = createOptions(['aktif', 'tidak aktif - meninggal', 'tidak aktif - pindah', 'tidak aktif - lainnya']);
 
 const useQuery = () => new URLSearchParams(useLocation().search);
 
-const MultiSelect = ({ options, value, onChange, placeholder }) => (
+const MultiSelect = ({ options, value, onChange, placeholder, styles }) => (
   <Select
+    styles={styles}
     options={options}
     isMulti
     placeholder={placeholder}
@@ -57,8 +57,74 @@ export default function ResidentReport() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-  const [fetched, setFetched] = useState(false);
   const query = useQuery();
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const getActiveFilters = () => {
+    const chips = [];
+
+    const labelMap = {
+      full_name: "Nama",
+      nik: "NIK",
+      kk_number: "No KK",
+      gender: "Gender",
+      birthplace: "Tempat Lahir",
+      education: "Pendidikan",
+      occupation: "Pekerjaan",
+      full_address: "Alamat",
+      min_age: "Usia Min",
+      max_age: "Usia Max",
+      min_birthdate: "Lahir Dari",
+      max_birthdate: "Lahir Sampai",
+      status: "Status",
+      marital_status: "Perkawinan",
+      relationship: "Hubungan",
+      citizenship: "Kewarganegaraan",
+      blood_type: "Gol. Darah"
+    };
+
+    Object.entries(filters).forEach(([key, value]) => {
+      if (!value || (Array.isArray(value) && value.length === 0)) return;
+
+      if (Array.isArray(value)) {
+        value.forEach(v => {
+          chips.push({
+            key,
+            value: v,
+            label: `${labelMap[key] || key}: ${v}`
+          });
+        });
+      } else {
+        chips.push({
+          key,
+          value,
+          label: `${labelMap[key] || key}: ${value}`
+        });
+      }
+    });
+
+    return chips;
+  };
+
+  // 🔹 Remove individual filter
+  const removeFilter = (key, value) => {
+    setFilters(prev => {
+      if (Array.isArray(prev[key])) {
+        return {
+          ...prev,
+          [key]: prev[key].filter(v => v !== value)
+        };
+      }
+      return {
+        ...prev,
+        [key]: ''
+      };
+    });
+  };
+
+  useEffect(() => {
+    fetchResidents();
+  }, [filters]);
 
   useEffect(() => {
     const parsed = { ...defaultFilters };
@@ -100,9 +166,8 @@ export default function ResidentReport() {
         .then((res) => {
           const enriched = res.data.map(r => ({ ...r, age: calculateAge(r.birthdate) }));
           setResidents(enriched);
-          setFetched(true);
         })
-        .catch(() => setFetched(true));
+        .catch();
     }
   }, []);
 
@@ -120,9 +185,38 @@ export default function ResidentReport() {
       .then((res) => {
         const enriched = res.data.map(r => ({ ...r, age: calculateAge(r.birthdate) }));
         setResidents(enriched);
-        setFetched(true);
       })
-      .catch(() => setFetched(true));
+      .catch();
+  };
+
+  const selectStyles = {
+    control: (base) => ({
+      ...base,
+      minHeight: '31px',
+      height: '31px',
+      fontSize: '0.875rem'
+    }),
+    valueContainer: (base) => ({
+      ...base,
+      padding: '0 8px'
+    }),
+    input: (base) => ({
+      ...base,
+      margin: 0,
+      padding: 0
+    }),
+    indicatorsContainer: (base) => ({
+      ...base,
+      height: '31px'
+    }),
+    placeholder: (base) => ({
+      ...base,
+      fontSize: '0.875rem'
+    }),
+    singleValue: (base) => ({
+      ...base,
+      fontSize: '0.875rem'
+    })
   };
 
   useEffect(() => {
@@ -163,8 +257,8 @@ export default function ResidentReport() {
 
   const handleExportPDF = () => {
     const doc = new jsPDF('landscape');
-    doc.setFontSize(12);
-    doc.text("Resident Report", 14, 15);
+    doc.setFontSize(16);
+    doc.text("Laporan Data Warga", 40, 30);
     const tableColumn = [
       "Nama Lengkap", "NIK", "Nomor KK", "Jenis Kelamin", "Alamat Lengkap",
       "Tempat Lahir", "Tanggal Lahir", "Usia", "Gol. Darah", "Agama",
@@ -177,10 +271,71 @@ export default function ResidentReport() {
     ]);
     doc.autoTable({
       startY: 20,
-      head: [tableColumn],
-      body: tableRows,
-      styles: { fontSize: 7, cellPadding: 1.5 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+      head: [[
+        "Nama",
+        "NIK",
+        "KK",
+        "JK",
+        "Lahir",
+        "Usia",
+        "Darah",
+        "Status",
+        "Alamat"
+      ]],
+
+      body: residents.map(r => [
+        r.full_name,
+        r.nik,
+        r.kk_number,
+        r.gender === "Laki - Laki" ? "L" : "P",
+        `${r.birthplace}, ${r.birthdate}`,
+        r.age,
+        r.blood_type || "-",
+        r.status,
+        r.full_address
+      ]),
+
+      styles: {
+        fontSize: 7,
+        cellPadding: 2,
+        overflow: 'linebreak',
+        valign: 'top'
+      },
+
+      headStyles: {
+        fillColor: [52, 73, 94], // darker, more professional
+        textColor: 255,
+        fontStyle: 'bold'
+      },
+
+      columnStyles: {
+        0: { cellWidth: 35 }, // Nama
+        1: { cellWidth: 35 }, // NIK
+        2: { cellWidth: 35 }, // KK
+        3: { cellWidth: 12, halign: 'center' }, // JK
+        4: { cellWidth: 40 }, // Lahir
+        5: { cellWidth: 12, halign: 'center' }, // Usia
+        6: { cellWidth: 15, halign: 'center' }, // Gol darah
+        7: { cellWidth: 30 }, // Status
+        8: { cellWidth: 'auto' } // Alamat (flex)
+      },
+
+      didDrawPage: (data) => {
+        doc.setFontSize(10);
+        const today = new Date();
+        const formattedDate = today.toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
+
+        doc.setFontSize(12);
+        doc.text(
+          `Laporan data Warga per ${formattedDate}`,
+          data.settings.margin.left,
+          10
+        );
+      }
     });
     doc.save(`resident-report-${new Date().toISOString().slice(0, 10)}.pdf`);
   };
@@ -201,43 +356,275 @@ export default function ResidentReport() {
           </div>
         </div>
 
-        <Card className="mb-3 no-print">
+        {/* 🔥 FILTER TOOLBAR */}
+        <Card className="mb-3 border-0 shadow-sm no-print">
           <Card.Body>
-            <Row className="g-3">
-              {[['Nama Lengkap', 'full_name'], ['NIK', 'nik'], ['Nomor KK', 'kk_number'], ['Jenis Kelamin', 'gender'],
-                ['Tempat Lahir', 'birthplace'], ['Pendidikan', 'education'], ['Pekerjaan', 'occupation'], ['Alamat Lengkap', 'full_address']].map(([label, key]) => (
-                  <Col md={3} key={key}>
-                    <FormControl size="sm" placeholder={label} value={filters[key]} onChange={e => setFilters(prev => ({ ...prev, [key]: e.target.value }))} />
-                  </Col>
-                ))}
-              <Col md={3}><InputGroup size="sm">
-                <FormControl placeholder="Usia Minimum" type="number" value={filters.min_age} onChange={e => setFilters(prev => ({ ...prev, min_age: e.target.value }))} />
-                <FormControl placeholder="Usia Maksimum" type="number" value={filters.max_age} onChange={e => setFilters(prev => ({ ...prev, max_age: e.target.value }))} />
-              </InputGroup></Col>
-              <Col md={3}><InputGroup size="sm">
-                <FormControl type="date" value={filters.min_birthdate} onChange={e => setFilters(prev => ({ ...prev, min_birthdate: e.target.value }))} />
-                <FormControl type="date" value={filters.max_birthdate} onChange={e => setFilters(prev => ({ ...prev, max_birthdate: e.target.value }))} />
-              </InputGroup></Col>
-              <Col md={3}><MultiSelect options={bloodTypeOptions} value={filters.blood_type} onChange={val => setFilters(prev => ({ ...prev, blood_type: val }))} placeholder="Gol. Darah" /></Col>
-              <Col md={3}><MultiSelect options={maritalOptions} value={filters.marital_status} onChange={val => setFilters(prev => ({ ...prev, marital_status: val }))} placeholder="Status Perkawinan" /></Col>
-              <Col md={3}><MultiSelect options={relationshipOptions} value={filters.relationship} onChange={val => setFilters(prev => ({ ...prev, relationship: val }))} placeholder="Hubungan Keluarga" /></Col>
-              <Col md={3}><MultiSelect options={citizenshipOptions} value={filters.citizenship} onChange={val => setFilters(prev => ({ ...prev, citizenship: val }))} placeholder="Kewarganegaraan" /></Col>
-              <Col md={3}>
-                <Select
-                  options={statusOptions}
-                  placeholder="Status Warga"
-                  isClearable
-                  value={statusOptions.find(opt => opt.value === filters.status) || null}
-                  onChange={opt => setFilters(prev => ({ ...prev, status: opt?.value || '' }))}
-                />
-              </Col>
-            </Row>
-            <div className="mt-3 d-flex justify-content-end">
-              <Button size="sm" variant="secondary" onClick={handleClearFilters}>Hapus filters</Button>
-              <Button size="sm" variant="primary" className="ms-2" onClick={fetchResidents}>
-                <i className="fas fa-search me-1" /> Terapkan Filter
+
+            {/* 🔹 TOP BAR */}
+            <div className="d-flex flex-wrap gap-2 align-items-center mb-2">
+
+              {/* 🔍 Search */}
+              <FormControl
+                size="sm"
+                placeholder="Cari nama, NIK, atau KK..."
+                style={{ maxWidth: '280px' }}
+                value={filters.full_name}
+                onChange={e => setFilters(prev => ({ ...prev, full_name: e.target.value }))}
+              />
+
+              {/* 🎯 Quick Filters */}
+              <Button
+                size="sm"
+                variant="outline-primary"
+                onClick={() => setFilters(prev => ({ ...prev, gender: 'Laki - Laki' }))}
+              >
+                Laki-laki
               </Button>
+
+              <Button
+                size="sm"
+                variant="outline-primary"
+                onClick={() => setFilters(prev => ({ ...prev, gender: 'Perempuan' }))}
+              >
+                Perempuan
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline-secondary"
+                onClick={() => setFilters(prev => ({ ...prev, min_age: '60', max_age: '150' }))}
+              >
+                Lansia
+              </Button>
+
+              {/* ⚙️ Advanced Toggle */}
+              <Button
+                size="sm"
+                variant="outline-dark"
+                onClick={() => setShowAdvanced(prev => !prev)}
+              >
+                Filters ⚙️
+              </Button>
+
+              {/* 🔄 Reset */}
+              <Button
+                size="sm"
+                variant="outline-danger"
+                onClick={handleClearFilters}
+              >
+                Reset
+              </Button>
+
             </div>
+
+            {/* 🔹 ACTIVE FILTER CHIPS */}
+            {getActiveFilters().length > 0 && (
+              <div className="d-flex flex-wrap gap-2 mt-2">
+                {getActiveFilters().map((chip, index) => (
+                  <span
+                    key={index}
+                    className="badge bg-light text-dark border d-flex align-items-center"
+                    style={{
+                      padding: '6px 10px',
+                      fontSize: '0.8rem',
+                      borderRadius: '20px'
+                    }}
+                  >
+                    {chip.label}
+                    <button
+                      onClick={() => removeFilter(chip.key, chip.value)}
+                      style={{
+                        marginLeft: '6px',
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* 🔽 ADVANCED FILTERS */}
+            {showAdvanced && (
+              <div className="mt-3 pt-3 border-top">
+                <Row className="g-3">
+
+                  <Col md={3}>
+                    <FormControl
+                      size="sm"
+                      placeholder="NIK"
+                      value={filters.nik}
+                      onChange={e => setFilters(prev => ({ ...prev, nik: e.target.value }))}
+                    />
+                  </Col>
+
+                  <Col md={3}>
+                    <FormControl
+                      size="sm"
+                      placeholder="Nomor KK"
+                      value={filters.kk_number}
+                      onChange={e => setFilters(prev => ({ ...prev, kk_number: e.target.value }))}
+                    />
+                  </Col>
+
+                  <Col md={3}>
+                    <Select
+                      styles={selectStyles}
+                      options={[
+                        { value: 'Laki - Laki', label: 'Laki - Laki' },
+                        { value: 'Perempuan', label: 'Perempuan' }
+                      ]}
+                      placeholder="Jenis Kelamin"
+                      isClearable
+                      value={
+                        filters.gender
+                          ? { value: filters.gender, label: filters.gender }
+                          : null
+                      }
+                      onChange={opt => setFilters(prev => ({
+                        ...prev,
+                        gender: opt?.value || ''
+                      }))}
+                    />
+                  </Col>
+
+                  <Col md={3}>
+                    <FormControl
+                      size="sm"
+                      placeholder="Tempat Lahir"
+                      value={filters.birthplace}
+                      onChange={e => setFilters(prev => ({ ...prev, birthplace: e.target.value }))}
+                    />
+                  </Col>
+
+                  {/* 🎂 Birthdate Range */}
+                  <Col md={3}>
+                    <FormControl
+                      type="date"
+                      size="sm"
+                      value={filters.min_birthdate}
+                      onChange={e => setFilters(prev => ({ ...prev, min_birthdate: e.target.value }))}
+                    />
+                  </Col>
+
+                  <Col md={3}>
+                    <FormControl
+                      type="date"
+                      size="sm"
+                      value={filters.max_birthdate}
+                      onChange={e => setFilters(prev => ({ ...prev, max_birthdate: e.target.value }))}
+                    />
+                  </Col>
+
+                  {/* 🎯 Age */}
+                  <Col md={3}>
+                    <InputGroup size="sm">
+                      <FormControl
+                        placeholder="Usia Min"
+                        type="number"
+                        value={filters.min_age}
+                        onChange={e => setFilters(prev => ({ ...prev, min_age: e.target.value }))}
+                      />
+                      <FormControl
+                        placeholder="Usia Max"
+                        type="number"
+                        value={filters.max_age}
+                        onChange={e => setFilters(prev => ({ ...prev, max_age: e.target.value }))}
+                      />
+                    </InputGroup>
+                  </Col>
+
+                  <Col md={3}>
+                    <MultiSelect
+                      styles={selectStyles}
+                      options={bloodTypeOptions}
+                      value={filters.blood_type}
+                      onChange={val => setFilters(prev => ({ ...prev, blood_type: val }))}
+                      placeholder="Gol. Darah"
+                    />
+                  </Col>
+
+                  <Col md={3}>
+                    <MultiSelect
+                      styles={selectStyles}
+                      options={maritalOptions}
+                      value={filters.marital_status}
+                      onChange={val => setFilters(prev => ({ ...prev, marital_status: val }))}
+                      placeholder="Status Perkawinan"
+                    />
+                  </Col>
+
+                  <Col md={3}>
+                    <MultiSelect
+                      styles={selectStyles}
+                      options={relationshipOptions}
+                      value={filters.relationship}
+                      onChange={val => setFilters(prev => ({ ...prev, relationship: val }))}
+                      placeholder="Hubungan Keluarga"
+                    />
+                  </Col>
+
+                  <Col md={3}>
+                    <FormControl
+                      size="sm"
+                      placeholder="Kewarganegaraan"
+                      value={filters.citizenship}
+                      onChange={e => setFilters(prev => ({
+                        ...prev,
+                        citizenship: e.target.value
+                      }))}
+                    />
+                  </Col>
+
+                  <Col md={3}>
+                    <Select
+                      styles={selectStyles}
+                      options={statusOptions}
+                      placeholder="Status Warga"
+                      isClearable
+                      value={statusOptions.find(opt => opt.value === filters.status) || null}
+                      onChange={opt => setFilters(prev => ({
+                        ...prev,
+                        status: opt?.value || ''
+                      }))}
+                    />
+                  </Col>
+
+                  <Col md={3}>
+                    <FormControl
+                      size="sm"
+                      placeholder="Pendidikan"
+                      value={filters.education}
+                      onChange={e => setFilters(prev => ({ ...prev, education: e.target.value }))}
+                    />
+                  </Col>
+
+                  <Col md={3}>
+                    <FormControl
+                      size="sm"
+                      placeholder="Pekerjaan"
+                      value={filters.occupation}
+                      onChange={e => setFilters(prev => ({ ...prev, occupation: e.target.value }))}
+                    />
+                  </Col>
+
+                  <Col md={6}>
+                    <FormControl
+                      size="sm"
+                      placeholder="Alamat Lengkap"
+                      value={filters.full_address}
+                      onChange={e => setFilters(prev => ({ ...prev, full_address: e.target.value }))}
+                    />
+                  </Col>
+
+                </Row>
+              </div>
+            )}
+
           </Card.Body>
         </Card>
 
@@ -264,8 +651,8 @@ export default function ResidentReport() {
                 </tr>
               </thead>
               <tbody>
-                {!fetched ? (
-                  <tr><td colSpan="16" className="text-center">Klik "Cari" untuk menampilkan data</td></tr>
+                {residents.length === 0 ? (
+                  <tr><td colSpan="16" className="text-center">Tidak ada data ditemukan</td></tr>
                 ) : paginatedResidents.length === 0 ? (
                   <tr><td colSpan="16" className="text-center">Tidak ada data ditemukan</td></tr>
                 ) : (

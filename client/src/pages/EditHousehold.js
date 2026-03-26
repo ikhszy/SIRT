@@ -3,6 +3,8 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../api';
 import Select from 'react-select';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 export default function EditHousehold() {
   const { kk_number } = useParams();
@@ -22,6 +24,16 @@ export default function EditHousehold() {
     borrowed_from_kk: '',
     kepemilikan_remarks: ''
   });
+
+  const calculateAge = (birthdate) => {
+    if (!birthdate) return '';
+    const birth = new Date(birthdate);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
+  };
 
   const [addresses, setAddresses] = useState([]);
   const [kkOptions, setKkOptions] = useState([]);
@@ -105,6 +117,75 @@ export default function EditHousehold() {
     });
   };
 
+  const handleExportKKPDF = () => {
+    const doc = new jsPDF('p', 'pt', 'A4');
+
+    const today = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    const order = ["Kepala Keluarga", "Istri", "Anak"];
+
+    const sorted = [...residents].sort(
+      (a, b) => order.indexOf(a.relationship) - order.indexOf(b.relationship)
+    );
+
+    const address = addresses.find(a => a.id === form.address_id)?.full_address || '-';
+
+    // 🔹 Title
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text(`Laporan Kartu Keluarga`, 40, 40);
+
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Per ${today}`, 40, 55);
+
+    // 🔹 KK Info
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text(`No. KK: ${kk_number}`, 40, 75);
+
+    doc.setFont(undefined, 'normal');
+    doc.text(`Alamat: ${address}`, 40, 90);
+
+    // 🔹 Table
+    doc.autoTable({
+      startY: 110,
+      head: [["Nama", "NIK", "Hubungan", "L/P", "Tempat, Tgl Lahir", "Usia"]],
+      body: residents.map(r => [
+        r.full_name,
+        r.nik,
+        r.relationship || '-',
+        r.gender === "Laki - Laki" ? "L" : "P",
+        `${r.birthplace || '-'}, ${r.birthdate || '-'}`,
+        calculateAge(r.birthdate)
+      ]),
+      styles: {
+        fontSize: 8,
+        cellPadding: 3,
+        overflow: 'linebreak'
+      },
+      headStyles: {
+        fillColor: [52, 73, 94],
+        textColor: 255
+      },
+      columnStyles: {
+        0: { cellWidth: 100 }, // Nama
+        1: { cellWidth: 100 }, // NIK
+        2: { cellWidth: 70 },  // Hubungan
+        3: { cellWidth: 30, halign: 'center' }, // L/P
+        4: { cellWidth: 120 }, // TTL
+        5: { cellWidth: 40, halign: 'center' } // Usia
+      },
+      alternateRowStyles: { fillColor: [245, 245, 245] }
+    });
+
+    doc.save(`KK-${kk_number}.pdf`);
+  };
+
   const inputClass = (field) => `form-control${fieldErrors[field] ? ' is-invalid' : ''}`;
 
   const handleSubmit = async (e) => {
@@ -160,15 +241,28 @@ export default function EditHousehold() {
             {isViewMode && !isEditable ? 'Detail Kartu Keluarga' : 'Edit Kartu Keluarga'}
           </h1>
           <div className="d-flex gap-2">
-            {!isEditable && (
-              <button className="btn btn-primary" onClick={() => setIsEditable(true)}>
-                <i className="fas fa-edit me-1"></i> Ubah
-              </button>
-            )}
-            <button type="button" className="btn btn-secondary" onClick={() => navigate('/households')}>
-              <i className="fas fa-arrow-left me-1"></i> Kembali
+          {!isEditable && (
+            <button className="btn btn-primary" onClick={() => setIsEditable(true)}>
+              <i className="fas fa-edit me-1"></i> Ubah
             </button>
-          </div>
+          )}
+
+          {/* 🔥 NEW BUTTON */}
+          <button
+            className="btn btn-outline-success"
+            onClick={handleExportKKPDF}
+          >
+            <i className="fas fa-file-pdf me-1"></i> Export KK
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => navigate('/households')}
+          >
+            <i className="fas fa-arrow-left me-1"></i> Kembali
+          </button>
+        </div>
         </div>
         <div className="card shadow mb-4">
           <div className="card-body">

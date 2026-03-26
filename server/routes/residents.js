@@ -81,9 +81,8 @@ router.get("/", authMiddleware, async (req, res) => {
     }
 
     if (req.query.citizenship) {
-      const values = req.query.citizenship.split(',');
-      filters.push(`r.citizenship IN (${values.map(() => '?').join(',')})`);
-      params.push(...values);
+      filters.push(`r.citizenship LIKE ?`);
+      params.push(`%${req.query.citizenship}%`);
     }
 
     if (status) {
@@ -123,6 +122,19 @@ router.get("/", authMiddleware, async (req, res) => {
         )
       `);
       params.push(parseInt(max_age));
+    }
+
+    const { min_birthdate = '', max_birthdate = '' } = req.query;
+
+    if (min_birthdate && max_birthdate) {
+      filters.push(`DATE(r.birthdate) BETWEEN DATE(?) AND DATE(?)`);
+      params.push(min_birthdate, max_birthdate);
+    } else if (min_birthdate) {
+      filters.push(`DATE(r.birthdate) >= DATE(?)`);
+      params.push(min_birthdate);
+    } else if (max_birthdate) {
+      filters.push(`DATE(r.birthdate) <= DATE(?)`);
+      params.push(max_birthdate);
     }
 
     const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
